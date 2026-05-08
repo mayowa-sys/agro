@@ -1,0 +1,23 @@
+{
+  "name": "agro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AGRO — Squad-powered cash flow OS for Nigerian smallholder farmers",
+  "license": "MIT",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/shared-types"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
