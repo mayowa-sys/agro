@@ -38,18 +38,18 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 - 🟡 Africa's Talking keys (USERNAME, API_KEY, SHORTCODE) — pending §1.6
 
 ### §1.4 Local dev infra
-- ⬜ `docker-compose.yml` created
-- ⬜ Postgres + Redis come up
-- ⬜ Documented in README
+- ✅ `docker-compose.yml` created (postgres + redis with healthchecks)
+- ✅ Postgres + Redis come up healthy
+- ✅ Documented in README ("Local infrastructure" section)
 
 ### §1.5 Shared types package
-- ⬜ `packages/shared-types/` initialized
-- ⬜ Linked from apps via workspace protocol
-- ⬜ `npm install` resolves cleanly
+- ✅ `packages/shared-types/` initialized
+- ✅ Linked from apps via workspace protocol
+- ✅ `npm install` resolves cleanly
 
 ### §1.6 External accounts
-- ⬜ Squad sandbox account
-- ⬜ Africa's Talking account
+- ✅ Squad sandbox account
+- ✅ Africa's Talking account
 - ⬜ VPS provisioned
 - ⬜ Optional domain registered
 
