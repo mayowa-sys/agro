@@ -1,3 +1,4 @@
+cat > progress_mayowa.md << 'EOF'
 # AGRO — Mayowa's Progress Tracker
 
 Living checklist of what's done, in progress, and blocked. Updated after each major task.
@@ -17,14 +18,16 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 - ✅ `.gitignore` added
 - ✅ MIT LICENSE added
 - ✅ Default branch set to `main`
-- ⬜ Tolu added as collaborator (manual — confirm in browser)
+- ✅ Tolu added as collaborator (manual — confirm in browser)
 - ✅ Initial commit pushed
 
 ### §1.2 Monorepo structure
-- ⬜ Folder skeleton created
-- ⬜ `.gitkeep` files in empty folders
-- ⬜ Root `package.json` with workspaces
-- ⬜ Committed and pushed
+- ✅ Folder skeleton created (apps/api, apps/web, apps/ai, packages/shared-types, docs)
+- ✅ `.gitkeep` files in empty folders
+- ✅ Root `package.json` with workspaces (apps/api, apps/web, packages/shared-types)
+- ✅ Root README.md with project overview and getting-started
+- ✅ docs/ stubs (architecture.md, api-contract.md, demo-script.md)
+- ✅ Committed and pushed
 
 ### §1.3 `.env.example`
 - ⬜ Created at repo root
@@ -98,3 +101,4 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 
 ## Phase 13: Pre-demo checklist
 *(24h before demo)*
+EOF
