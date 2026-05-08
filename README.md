@@ -84,3 +84,20 @@ curl http://localhost:3000/health
 ## License
 
 MIT — see LICENSE.
+
+## Local infrastructure
+
+`docker-compose.yml` brings up two services:
+
+- **Postgres** (TimescaleDB image, PG16) on `localhost:5432` — user `agro`, pass `agro`, db `agro`
+- **Redis** 7 on `localhost:6379`
+
+```bash
+docker compose up -d        # start
+docker compose ps           # check health
+docker compose logs -f      # tail logs
+docker compose down         # stop (volume preserved)
+docker compose down -v      # stop + wipe data
+```
+
+Data persists in the `agro_pg` Docker volume between restarts. To start fresh, use `docker compose down -v`.
