@@ -5,3 +5,284 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum Role {
+  FARMER
+  AGGREGATOR
+  ADMIN
+}
+
+enum CropType {
+  YAM
+  CASSAVA
+  MAIZE
+  RICE
+  TOMATO
+  COCOA
+  SESAME
+  OTHER
+}
+
+enum Language {
+  EN
+  PIDGIN
+  HAUSA
+  YORUBA
+  IGBO
+}
+
+enum AccountPurpose {
+  WORKING
+  BILLS
+  NEXT_SEASON
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionSource {
+  HARVEST_PAYMENT
+  SPLIT_TRANSFER
+  INPUT_DISBURSEMENT
+  INPUT_REPAYMENT
+  FACTORING_ADVANCE
+  FACTORING_REPAYMENT
+  EXTERNAL
+  UNKNOWN
+}
+
+enum DeferralStatus {
+  PENDING
+  ACTIVE
+  REPAID
+  DEFAULTED
+  CANCELLED
+}
+
+enum FactoringStatus {
+  REQUESTED
+  ADVANCED
+  REPAID
+  OVERDUE
+}
+
+enum BriefChannel {
+  SMS
+  IN_APP
+}
+
+model User {
+  id          String      @id @default(cuid())
+  phone       String      @unique
+  hashedPin   String?
+  role        Role        @default(FARMER)
+  language    Language    @default(EN)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  farmer      Farmer?
+  aggregator  Aggregator?
+}
+
+model Farmer {
+  id                  String             @id @default(cuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id])
+  name                String
+  cropType            CropType
+  region              String
+  zone                String?
+  plantingDate        DateTime?
+  expectedHarvestDate DateTime?
+  hashedBvn           String?
+  cooperativeId       String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  virtualAccounts     VirtualAccount[]
+  splitRule           SplitRule?
+  forecasts           Forecast[]
+  cashGaps            CashGap[]
+  inputDeferrals      InputDeferral[]
+  factoringAdvances   FactoringAdvance[]
+  weeklyBriefs        WeeklyBrief[]
+  liberationLogs      LiberationLog[]
+}
+
+model Aggregator {
+  id                String             @id @default(cuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id])
+  businessName      String
+  contactEmail      String
+  squadAccountId    String?
+  createdAt         DateTime           @default(now())
+  factoringAdvances FactoringAdvance[]
+}
+
+model VirtualAccount {
+  id                 String         @id @default(cuid())
+  farmerId           String
+  farmer             Farmer         @relation(fields: [farmerId], references: [id])
+  squadAccountNumber String         @unique
+  squadCustomerId    String
+  bankName           String
+  purpose            AccountPurpose
+  cachedBalance      BigInt         @default(0)
+  createdAt          DateTime       @default(now())
+  transactions       Transaction[]
+
+  @@index([farmerId, purpose])
+}
+
+model SplitRule {
+  id            String   @id @default(cuid())
+  farmerId      String   @unique
+  farmer        Farmer   @relation(fields: [farmerId], references: [id])
+  workingPct    Int      @default(60)
+  billsPct      Int      @default(25)
+  nextSeasonPct Int      @default(15)
+  active        Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+}
+
+model Transaction {
+  id                String            @id @default(cuid())
+  virtualAccountId  String
+  virtualAccount    VirtualAccount    @relation(fields: [virtualAccountId], references: [id])
+  squadReference    String            @unique
+  amount            BigInt
+  type              TransactionType
+  source            TransactionSource @default(UNKNOWN)
+  occurredAt        DateTime
+  rawWebhookPayload Json
+  processed         Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+
+  @@index([virtualAccountId, occurredAt])
+}
+
+model Forecast {
+  id           String          @id @default(cuid())
+  farmerId     String
+  farmer       Farmer          @relation(fields: [farmerId], references: [id])
+  generatedAt  DateTime        @default(now())
+  modelVersion String
+  horizonDays  Int             @default(90)
+  events       ForecastEvent[]
+
+  @@index([farmerId, generatedAt])
+}
+
+model ForecastEvent {
+  id             String   @id @default(cuid())
+  forecastId     String
+  forecast       Forecast @relation(fields: [forecastId], references: [id])
+  expectedDate   DateTime
+  expectedAmount BigInt
+  type           String
+  category       String
+  confidence     Float
+  reasonsJson    Json
+
+  @@index([forecastId, expectedDate])
+}
+
+model CashGap {
+  id         String   @id @default(cuid())
+  farmerId   String
+  farmer     Farmer   @relation(fields: [farmerId], references: [id])
+  startDate  DateTime
+  endDate    DateTime
+  gapAmount  BigInt
+  status     String
+  detectedAt DateTime @default(now())
+}
+
+model Supplier {
+  id                 String          @id @default(cuid())
+  name               String
+  contactPhone       String
+  squadAccountNumber String
+  region             String
+  active             Boolean         @default(true)
+  inputDeferrals     InputDeferral[]
+}
+
+model InputDeferral {
+  id              String         @id @default(cuid())
+  farmerId        String
+  farmer          Farmer         @relation(fields: [farmerId], references: [id])
+  supplierId      String
+  supplier        Supplier       @relation(fields: [supplierId], references: [id])
+  amount          BigInt
+  agroFee         BigInt
+  status          DeferralStatus @default(PENDING)
+  squadMandateId  String?
+  expectedRepayBy DateTime?
+  disbursedAt     DateTime?
+  repaidAt        DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model FactoringAdvance {
+  id                      String          @id @default(cuid())
+  aggregatorId            String
+  aggregator              Aggregator      @relation(fields: [aggregatorId], references: [id])
+  farmerId                String
+  farmer                  Farmer          @relation(fields: [farmerId], references: [id])
+  amount                  BigInt
+  fee                     BigInt
+  status                  FactoringStatus @default(REQUESTED)
+  advancedAt              DateTime?
+  expectedRepayBy         DateTime?
+  repaidAt                DateTime?
+  squadAdvanceTransferRef String?
+  squadRepaymentRef       String?
+  createdAt               DateTime        @default(now())
+  liberationLog           LiberationLog?
+}
+
+model LiberationLog {
+  id                     String           @id @default(cuid())
+  farmerId               String
+  farmer                 Farmer           @relation(fields: [farmerId], references: [id])
+  factoringAdvanceId     String           @unique
+  factoringAdvance       FactoringAdvance @relation(fields: [factoringAdvanceId], references: [id])
+  counterfactualLossKobo BigInt
+  loggedAt               DateTime         @default(now())
+}
+
+model WeeklyBrief {
+  id           String       @id @default(cuid())
+  farmerId     String
+  farmer       Farmer       @relation(fields: [farmerId], references: [id])
+  weekOf       DateTime
+  contentText  String
+  channel      BriefChannel
+  sentAt       DateTime?
+  delivered    Boolean      @default(false)
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+
+  @@unique([farmerId, weekOf, channel])
+}
+
+model CropPlaybook {
+  id                  String   @id @default(cuid())
+  name                String   @unique
+  cropType            CropType
+  description         String
+  baselineSeasonality Json
+  active              Boolean  @default(true)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  metadata   Json
+  occurredAt DateTime @default(now())
+}
