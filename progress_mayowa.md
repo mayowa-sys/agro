@@ -1,4 +1,3 @@
-cat > progress_mayowa.md << 'EOF'
 # AGRO — Mayowa's Progress Tracker
 
 Living checklist of what's done, in progress, and blocked. Updated after each major task.
@@ -18,19 +17,25 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 - ✅ `.gitignore` added
 - ✅ MIT LICENSE added
 - ✅ Default branch set to `main`
-- ✅ Tolu added as collaborator (manual — confirm in browser)
+- ✅ Tolu added as collaborator
 - ✅ Initial commit pushed
 
 ### §1.2 Monorepo structure
-- ✅ Folder skeleton created (apps/api, apps/web, apps/ai, packages/shared-types, docs)
+- ✅ Folder skeleton created
 - ✅ `.gitkeep` files in empty folders
-- ✅ Root `package.json` with workspaces (apps/api, apps/web, packages/shared-types)
-- ✅ Root README.md with project overview and getting-started
+- ✅ Root `package.json` with workspaces
+- ✅ Root README.md
 - ✅ docs/ stubs (architecture.md, api-contract.md, demo-script.md)
 - ✅ Committed and pushed
 
 ### §1.3 `.env.example`
-- ⬜ Created at repo root
+- ✅ Created at repo root with all required keys
+- ✅ Local `.env` created by copying template
+- ✅ JWT_SECRET, SQUAD_WEBHOOK_SECRET, AI_SERVICE_TOKEN, DEMO_RESET_TOKEN generated and filled
+- ✅ Verified `.env` is gitignored
+- ✅ `.env.example` committed and pushed
+- 🟡 Squad keys (SECRET_KEY, PUBLIC_KEY, MERCHANT_ID) — pending §1.6
+- 🟡 Africa's Talking keys (USERNAME, API_KEY, SHORTCODE) — pending §1.6
 
 ### §1.4 Local dev infra
 - ⬜ `docker-compose.yml` created
@@ -69,7 +74,7 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 
 ### §1.10 Auth module
 - ⬜ Middleware `auth.ts` created
-- ⬜ `auth.routes.ts` created with signup/login/me/demo-login
+- ⬜ `auth.routes.ts` created
 - ⬜ Mounted in `registerRoutes`
 - ⬜ Shared types added
 
@@ -101,4 +106,3 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 
 ## Phase 13: Pre-demo checklist
 *(24h before demo)*
-EOF
