@@ -4,6 +4,7 @@ import { squadWebhookRouter } from './squad-webhook.routes';
 import { accountsRouter } from './accounts.routes';
 import { splitsRouter } from './splits.routes';
 import { deferralsRouter } from './deferrals.routes';
+import { factoringRouter } from './factoring.routes';
 
 export function registerRoutes(app: Application) {
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
@@ -13,6 +14,8 @@ export function registerRoutes(app: Application) {
   app.use('/accounts', accountsRouter);
   app.use('/split-rules', splitsRouter);
   app.use('/deferrals', deferralsRouter);
+  app.use('/aggregator', factoringRouter);
+  app.use('/liberation', factoringRouter);
   // app.use('/forecasts', forecastsRouter);
   // app.use('/demo', demoRouter);
 }
