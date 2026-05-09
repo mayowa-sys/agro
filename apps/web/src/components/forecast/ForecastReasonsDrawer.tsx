@@ -1,5 +1,6 @@
-import { format, parseISO } from 'date-fns';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { format } from 'date-fns';
+import { X, TrendingUp, TrendingDown, Minus, BookOpen } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { formatNaira } from '@/lib/format';
 import type { ForecastEvent } from './ForecastCalendar';
 
@@ -19,7 +20,7 @@ const REASONS: Record<string, string[]> = {
   EXPENSE: [
     'Input cost repayment aligned with your deferral agreement',
     'Seasonal labour cost peak from historical spend data',
-    'Transport + market fees estimated from prior harvests',
+    'Transport and market fees estimated from prior harvests',
   ],
   NEUTRAL: [
     'Mixed cash flows expected — income and expenses nearly offset',
@@ -31,76 +32,105 @@ const REASONS: Record<string, string[]> = {
 export function ForecastReasonsDrawer({ open, onClose, date, events }: Props) {
   const net = events.reduce((s, e) => s + e.amount, 0);
   const dominantType = net > 0 ? 'INCOME' : net < 0 ? 'EXPENSE' : 'NEUTRAL';
-  const confidence = 72 + Math.floor(Math.abs(net) % 20); // deterministic-ish from amount
-  const filledBars = Math.round((confidence / 100) * 10);
+  const confidence = Math.min(95, 72 + Math.floor((Math.abs(net) / 1_000_000) % 20));
   const reasons = REASONS[dominantType];
-  const primaryEvent = events.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
+  const sortedEvents = [...events].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+
+  const NetIcon = dominantType === 'INCOME' ? TrendingUp : dominantType === 'EXPENSE' ? TrendingDown : Minus;
+  const netColor = dominantType === 'INCOME' ? 'text-leaf-500' : dominantType === 'EXPENSE' ? 'text-destructive' : 'text-muted-foreground';
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle className="text-base font-semibold leading-snug">
-            {date
-              ? `Predicted: ${formatNaira(Math.abs(net), { compact: false })} ${dominantType === 'INCOME' ? 'income' : 'expense'} on ${format(date, 'MMMM d')}`
-              : 'Forecast Detail'}
-          </SheetTitle>
-        </SheetHeader>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-sm bg-card border-l border-border p-0 flex flex-col"
+      >
+        {/* Header */}
+        <div className="border-b border-border px-6 py-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              {date && (
+                <p className="text-base font-semibold text-foreground font-sans mb-1">
+                  {format(date, 'EEEE, MMMM d')}
+                </p>
+              )}
+              <div className="flex items-baseline gap-2">
+                <p className="font-display text-3xl text-foreground">
+                  {net >= 0 ? '+' : '−'}{formatNaira(Math.abs(net))}
+                </p>
+                <NetIcon size={16} className={netColor} />
+              </div>
+              <p className="text-sm text-muted-foreground font-sans mt-0.5">
+                {dominantType === 'INCOME' ? 'expected income' : dominantType === 'EXPENSE' ? 'expected expense' : 'net neutral'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors mt-0.5 p-1 rounded hover:bg-accent"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
 
-        <div className="mt-6 space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
           {/* Confidence */}
           <div>
-            <p className="text-xs text-slate-500 mb-1">Confidence</p>
-            <div className="flex items-center gap-2">
-              <div className="flex gap-0.5">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-4 h-3 rounded-sm ${i < filledBars ? 'bg-leaf-500' : 'bg-slate-200'}`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm font-semibold text-slate-700">{confidence}%</span>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans">Model confidence</p>
+              <span className="text-sm font-bold text-foreground font-sans tabular-nums">{confidence}%</span>
+            </div>
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-leaf-500 rounded-full transition-all duration-500"
+                style={{ width: `${confidence}%` }}
+              />
             </div>
           </div>
 
-          {/* Events breakdown */}
-          {events.length > 0 && (
+          {/* Breakdown */}
+          {sortedEvents.length > 0 && (
             <div>
-              <p className="text-xs text-slate-500 mb-2">Events on this day</p>
-              <ul className="space-y-2">
-                {events.map((e, i) => (
-                  <li key={i} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-700">{e.category}</span>
-                    <span className={e.amount >= 0 ? 'text-leaf-700 font-medium' : 'text-red-600 font-medium'}>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans mb-3">Breakdown</p>
+              <div className="space-y-2.5">
+                {sortedEvents.map((e, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${e.amount >= 0 ? 'bg-leaf-500' : 'bg-destructive'}`} />
+                      <span className="text-sm text-foreground font-sans truncate">{e.category.replace(/_/g, ' ')}</span>
+                    </div>
+                    <span className={`text-sm font-semibold font-sans tabular-nums shrink-0 ${e.amount >= 0 ? 'text-leaf-500' : 'text-destructive'}`}>
                       {e.amount >= 0 ? '+' : '−'}{formatNaira(Math.abs(e.amount), { compact: true })}
                     </span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
           {/* Reasons */}
           <div>
-            <p className="text-xs text-slate-500 mb-2">Top reasons</p>
-            <ol className="space-y-2">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans mb-3">Why Agro predicts this</p>
+            <ol className="space-y-3">
               {reasons.map((r, i) => (
-                <li key={i} className="flex gap-2 text-sm text-slate-700">
-                  <span className="text-leaf-600 font-bold shrink-0">{i + 1}.</span>
-                  <span>{r}</span>
+                <li key={i} className="flex gap-3">
+                  <span className="text-xs font-bold text-muted-foreground font-sans mt-0.5 tabular-nums w-4 shrink-0">{i + 1}.</span>
+                  <span className="text-sm text-foreground font-sans leading-relaxed">{r}</span>
                 </li>
               ))}
             </ol>
           </div>
 
           {/* Playbook anchor */}
-          {primaryEvent && (
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              Anchored to:{' '}
-              <a href="#" className="text-leaf-700 font-medium hover:underline">
-                The {primaryEvent.category} Cycle playbook
-              </a>
+          {sortedEvents[0] && (
+            <div className="border border-border rounded-lg px-4 py-3 flex items-center gap-3">
+              <BookOpen size={14} className="text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground font-sans">Anchored to</p>
+                <a href="#" className="text-sm text-leaf-500 hover:text-leaf-600 font-sans font-medium transition-colors">
+                  {sortedEvents[0].category.replace(/_/g, ' ')} Cycle playbook →
+                </a>
+              </div>
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { X, Droplets, TrendingDown, Clock, CloudRain, RotateCcw, Loader2 } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { formatNaira } from '@/lib/format';
+import { cn } from '@/lib/cn';
 
 interface Props {
   open: boolean;
@@ -14,81 +14,125 @@ interface Props {
 }
 
 const SCENARIOS = [
-  { id: 'drought',           emoji: '🌵', label: 'Drought',              desc: 'Crop yield drops 40%' },
-  { id: 'price_crash',       emoji: '📉', label: 'Price crash',          desc: 'Market prices fall 30%' },
-  { id: 'late_buyer',        emoji: '⏳', label: 'Late buyer',           desc: 'Payment delayed 6 weeks' },
-  { id: 'late_harvest_3wk',  emoji: '🌧', label: 'Late harvest (3 wk)', desc: 'Harvest shifts 3 weeks' },
+  { id: 'drought',          Icon: Droplets,    label: 'Drought',        desc: 'Crop yield drops 40%' },
+  { id: 'price_crash',      Icon: TrendingDown, label: 'Price crash',    desc: 'Market prices fall 30%' },
+  { id: 'late_buyer',       Icon: Clock,        label: 'Late buyer',     desc: 'Payment delayed 6 weeks' },
+  { id: 'late_harvest_3wk', Icon: CloudRain,    label: 'Late harvest',   desc: 'Harvest shifts 3 weeks' },
 ];
 
 export function StressTestConsole({ open, onClose, onRun, onReset, isLoading, activeScenario, result }: Props) {
   const active = SCENARIOS.find((s) => s.id === activeScenario);
 
-  // Compute impact summary from result events vs baseline
-  const impactSummary = result
-    ? (() => {
-        const totalIncome = (result.events ?? [])
-          .filter((e: any) => e.type === 'INCOME')
-          .reduce((s: number, e: any) => s + Number(e.expectedAmount ?? e.amount ?? 0), 0);
-        return totalIncome;
-      })()
+  const impactIncome = result
+    ? (result.events ?? [])
+        .filter((e: any) => e.type === 'INCOME')
+        .reduce((s: number, e: any) => s + Number(e.expectedAmount ?? e.amount ?? 0), 0)
     : null;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>Stress Test — what if conditions change?</SheetTitle>
-        </SheetHeader>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-sm bg-card border-l border-border p-0 flex flex-col"
+      >
+        {/* Header */}
+        <div className="border-b border-border px-6 py-5 flex items-start justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans mb-1">Simulation</p>
+            <h2 className="font-display text-2xl text-foreground leading-tight">Stress Test</h2>
+            <p className="text-sm text-muted-foreground font-sans mt-0.5">What if conditions change?</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors mt-1 p-1 rounded hover:bg-accent"
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-        <div className="mt-6 space-y-6">
-          {/* Scenario grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {SCENARIOS.map((s) => (
-              <button
-                key={s.id}
-                disabled={isLoading}
-                onClick={() => onRun(s.id)}
-                className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:bg-slate-50 disabled:opacity-50 ${
-                  activeScenario === s.id ? 'border-amber-400 bg-amber-50' : 'border-slate-200'
-                }`}
-              >
-                <span className="text-2xl">{s.emoji}</span>
-                <span className="text-sm font-semibold text-slate-800">{s.label}</span>
-                <span className="text-xs text-slate-500">{s.desc}</span>
-                {activeScenario === s.id && (
-                  <Badge variant="outline" className="mt-1 border-amber-400 text-amber-700 text-[10px]">Active</Badge>
-                )}
-              </button>
-            ))}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Scenarios */}
+          <div>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans mb-3">Choose a scenario</p>
+            <div className="grid grid-cols-2 gap-2">
+              {SCENARIOS.map(({ id, Icon, label, desc }) => {
+                const isActive = activeScenario === id;
+                return (
+                  <button
+                    key={id}
+                    disabled={isLoading}
+                    onClick={() => onRun(id)}
+                    className={cn(
+                      'flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-all duration-150 disabled:opacity-40',
+                      isActive
+                        ? 'border-gold-500/50 bg-gold-500/5'
+                        : 'border-border bg-background hover:border-border hover:bg-accent cursor-pointer'
+                    )}
+                  >
+                    <Icon
+                      size={16}
+                      className={isActive ? 'text-gold-500' : 'text-muted-foreground'}
+                    />
+                    <div>
+                      <p className={cn('text-sm font-semibold font-sans leading-tight', isActive ? 'text-foreground' : 'text-foreground')}>
+                        {label}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-sans mt-0.5">{desc}</p>
+                    </div>
+                    {isActive && (
+                      <span className="text-[10px] uppercase tracking-wider text-gold-500 font-sans font-semibold">
+                        Active
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Loading */}
           {isLoading && (
-            <p className="text-sm text-slate-500 animate-pulse">Running simulation…</p>
+            <div className="flex items-center gap-2.5 py-1">
+              <Loader2 size={14} className="text-muted-foreground animate-spin" />
+              <p className="text-sm text-muted-foreground font-sans">Running simulation…</p>
+            </div>
           )}
 
-          {/* Result panel */}
+          {/* Result */}
           {result && active && !isLoading && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2">
-              <p className="text-sm font-semibold text-amber-900">
-                Under {active.label}:
+            <div className="rounded-lg border border-gold-500/25 bg-gold-500/5 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <active.Icon size={14} className="text-gold-500" />
+                <p className="text-xs font-semibold text-foreground font-sans uppercase tracking-wide">
+                  {active.label} scenario
+                </p>
+              </div>
+              {impactIncome !== null && (
+                <div>
+                  <p className="text-xs text-muted-foreground font-sans uppercase tracking-widest mb-0.5">Expected 90-day income</p>
+                  <p className="font-display text-2xl text-foreground">
+                    {formatNaira(impactIncome, { compact: true })}
+                  </p>
+                </div>
+              )}
+              <p className="text-sm text-foreground/80 font-sans leading-relaxed">
+                Cash gap risk is elevated. New shortfall windows may appear on your calendar.
               </p>
-              <p className="text-sm text-amber-800">
-                Expected income over 90 days drops to{' '}
-                <span className="font-bold">{formatNaira(impactSummary ?? 0, { compact: true })}</span>.
-                Cash gap risk increases — new shortfall windows may appear in amber on your calendar.
-              </p>
-              <p className="text-xs text-amber-700 font-medium">
-                Recommended: Request an input deferral now, or sell a portion of your harvest early to cover the gap.
+              <p className="text-xs text-muted-foreground font-sans">
+                Recommended: request an input deferral or sell a portion of your harvest early.
               </p>
             </div>
           )}
 
           {/* Reset */}
           {activeScenario && !isLoading && (
-            <Button variant="outline" className="w-full" onClick={onReset}>
+            <button
+              onClick={onReset}
+              className="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-background hover:bg-accent py-2.5 text-sm text-foreground font-sans transition-all"
+            >
+              <RotateCcw size={13} />
               Reset to actual forecast
-            </Button>
+            </button>
           )}
         </div>
       </SheetContent>

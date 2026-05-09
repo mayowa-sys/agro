@@ -1,14 +1,8 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Sprout, SlidersHorizontal, Banknote } from 'lucide-react';
 import { formatNaira } from '@/lib/format';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { CashGap } from './ForecastCalendar';
 
 interface Props {
@@ -18,62 +12,69 @@ interface Props {
   onRequestFactoring?: () => void;
 }
 
-export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onRequestFactoring }: Props) {
-  const [dialogOpen, setDialogOpen] = useState(false);
+const ACTIONS = [
+  { Icon: Sprout,             label: 'Request input deferral',   sub: 'Buy now, repay on harvest day',      key: 'deferral' },
+  { Icon: SlidersHorizontal,  label: 'Adjust split rule',        sub: 'Save more from your next payment',   key: 'split' },
+  { Icon: Banknote,           label: 'Request factoring advance', sub: 'Get paid early on your harvest',     key: 'factoring' },
+];
 
+export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onRequestFactoring }: Props) {
+  const [open, setOpen] = useState(false);
   if (gaps.length === 0) return null;
 
   const worst = gaps.reduce((a, b) => (b.shortfallKobo > a.shortfallKobo ? b : a), gaps[0]);
+  const handlers: Record<string, (() => void) | undefined> = {
+    deferral: onRequestDeferral,
+    split: onAdjustSplit,
+    factoring: onRequestFactoring,
+  };
 
   return (
     <>
-      <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <div className="flex-1 text-sm text-amber-800">
-          <span className="font-semibold">Predicted short period: </span>
-          {formatNaira(worst.shortfallKobo, { compact: true })} short between{' '}
-          {format(parseISO(worst.startDate), 'MMM d')} and {format(parseISO(worst.endDate), 'MMM d')}.{' '}
-          <button
-            className="font-semibold underline underline-offset-2 hover:text-amber-900"
-            onClick={() => setDialogOpen(true)}
-          >
-            Take action
-          </button>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-3 rounded-lg border border-gold-500/30 bg-gold-500/5 px-4 py-3 text-left hover:bg-gold-500/8 transition-colors group"
+      >
+        <AlertTriangle size={15} className="text-gold-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-semibold text-foreground font-sans">
+            {formatNaira(worst.shortfallKobo, { compact: true })} shortfall predicted
+          </span>
+          <span className="text-sm text-muted-foreground font-sans ml-2">
+            {format(parseISO(worst.startDate), 'MMM d')} – {format(parseISO(worst.endDate), 'MMM d')}
+          </span>
         </div>
-      </div>
+        <span className="text-xs text-muted-foreground font-sans uppercase tracking-wider group-hover:text-foreground transition-colors flex items-center gap-1">
+          Take action <ArrowRight size={11} />
+        </span>
+      </button>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Address your cash gap</DialogTitle>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm bg-card border-border p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
+            <DialogTitle className="font-display text-2xl text-foreground">
+              Address your gap
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground font-sans mt-1">
+              {formatNaira(worst.shortfallKobo)} short ·{' '}
+              {format(parseISO(worst.startDate), 'MMM d')}–{format(parseISO(worst.endDate), 'MMM d')}
+            </p>
           </DialogHeader>
-          <p className="text-sm text-slate-600 mb-4">
-            You're predicted to be {formatNaira(worst.shortfallKobo)} short between{' '}
-            {format(parseISO(worst.startDate), 'MMM d')} and {format(parseISO(worst.endDate), 'MMM d')}.
-            Choose an action:
-          </p>
-          <div className="space-y-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => { setDialogOpen(false); onRequestDeferral?.(); }}
-            >
-              🌱 Request input deferral
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => { setDialogOpen(false); onAdjustSplit?.(); }}
-            >
-              ⚖️ Adjust my split rule
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => { setDialogOpen(false); onRequestFactoring?.(); }}
-            >
-              💰 Request factoring advance
-            </Button>
+          <div className="px-4 py-4 space-y-2">
+            {ACTIONS.map(({ Icon, label, sub, key }) => (
+              <button
+                key={key}
+                onClick={() => { setOpen(false); handlers[key]?.(); }}
+                className="w-full flex items-center gap-3 rounded-lg border border-border bg-background hover:bg-accent px-4 py-3 text-left transition-all group"
+              >
+                <Icon size={15} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground font-sans">{label}</p>
+                  <p className="text-xs text-muted-foreground font-sans">{sub}</p>
+                </div>
+                <ArrowRight size={13} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+              </button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

@@ -1,52 +1,74 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/stores/auth.store';
+import { useTheme } from '@/hooks/useTheme';
+import { Sun, Moon, LayoutDashboard, TrendingUp, SplitSquareHorizontal, Clock, PlayCircle } from 'lucide-react';
 
 const farmerLinks = [
-  { to: '/app/dashboard', label: 'Dashboard' },
-  { to: '/app/forecast', label: 'Forecast' },
-  { to: '/app/splits', label: 'Splits' },
-  { to: '/app/deferrals', label: 'Deferrals' },
-  { to: '/app/season-replay', label: 'Season Replay' },
+  { to: '/app/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
+  { to: '/app/forecast',      label: 'Forecast',      icon: TrendingUp },
+  { to: '/app/splits',        label: 'Splits',        icon: SplitSquareHorizontal },
+  { to: '/app/deferrals',     label: 'Deferrals',     icon: Clock },
+  { to: '/app/season-replay', label: 'Season Replay', icon: PlayCircle },
 ];
 
 export function AppShell() {
   const { user, logout } = useAuth();
+  const { theme, toggle } = useTheme();
+
   return (
-    <div className="min-h-screen flex flex-col bg-cream">
-      <header className="border-b border-ink/10 px-6 py-3 flex items-center justify-between bg-leaf">
-        <span className="font-bold text-lg text-cream tracking-tight">Agro</span>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-cream/70">{user?.phone}</span>
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Top bar */}
+      <header className="border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
+        <span
+          className="text-2xl tracking-tight text-foreground"
+          style={{ fontFamily: 'Ojuju, sans-serif', fontWeight: 700 }}
+        >
+          Agro
+        </span>
+        <div className="flex items-center gap-5">
+          <span className="text-sm text-muted-foreground font-sans">{user?.phone}</span>
+          <button
+            onClick={toggle}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <button
             onClick={logout}
-            className="text-cream/70 hover:text-cream transition-colors"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors font-sans"
           >
-            Logout
+            Sign out
           </button>
         </div>
       </header>
-      <div className="flex flex-1">
-        <nav className="w-52 border-r border-ink/10 p-4 hidden md:block bg-white">
-          <ul className="space-y-1">
-            {farmerLinks.map((l) => (
-              <li key={l.to}>
-                <NavLink
-                  to={l.to}
-                  className={({ isActive }) =>
-                    `block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-leaf text-cream'
-                        : 'text-ink/70 hover:bg-cream hover:text-ink'
-                    }`
-                  }
-                >
-                  {l.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <nav className="w-56 border-r border-border p-3 hidden md:flex flex-col gap-0.5 shrink-0 bg-background">
+          {farmerLinks.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-150 font-sans ${
+                  isActive
+                    ? 'bg-accent text-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={15} className={isActive ? 'text-leaf-500' : 'text-muted-foreground'} />
+                  {label}
+                </>
+              )}
+            </NavLink>
+          ))}
         </nav>
-        <main className="flex-1 p-6 overflow-auto">
+
+        <main className="flex-1 overflow-y-auto bg-background">
           <Outlet />
         </main>
       </div>

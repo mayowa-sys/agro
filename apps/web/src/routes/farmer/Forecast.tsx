@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { RefreshCw, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ForecastCalendar, type ForecastEvent, type CashGap } from '@/components/forecast/ForecastCalendar';
 import { ForecastReasonsDrawer } from '@/components/forecast/ForecastReasonsDrawer';
@@ -20,28 +19,23 @@ export default function Forecast() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEvents, setSelectedEvents] = useState<ForecastEvent[]>([]);
-
   const [stressOpen, setStressOpen] = useState(false);
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [stressedForecast, setStressedForecast] = useState<any>(null);
 
-  const baseEvents: ForecastEvent[] = (forecast?.events ?? []).map((e: any) => ({
-    ...e,
-    date: e.date ?? e.expectedDate,
-    amount: Number(e.amount ?? e.expectedAmount),
-  }));
+  const normalise = (evs: any[]): ForecastEvent[] =>
+    (evs ?? []).map((e) => ({
+      ...e,
+      date: e.date ?? e.expectedDate,
+      amount: Number(e.amount ?? e.expectedAmount),
+    }));
 
-  const stressEvents: ForecastEvent[] = (stressedForecast?.events ?? []).map((e: any) => ({
-    ...e,
-    date: e.date ?? e.expectedDate,
-    amount: Number(e.amount ?? e.expectedAmount),
-  }));
-
-  const activeEvents = stressedForecast ? stressEvents : baseEvents;
+  const baseEvents = normalise(forecast?.events ?? []);
+  const activeEvents = stressedForecast ? normalise(stressedForecast.events ?? []) : baseEvents;
   const gaps: CashGap[] = gapData?.gaps ?? [];
 
   const handleDayClick = (date: Date, evs: ForecastEvent[]) => {
-    if (evs.length === 0) return;
+    if (!evs.length) return;
     setSelectedDate(date);
     setSelectedEvents(evs);
     setDrawerOpen(true);
@@ -53,83 +47,78 @@ export default function Forecast() {
     setStressedForecast(result);
   };
 
-  const handleResetStress = () => {
-    setActiveScenario(null);
-    setStressedForecast(null);
-  };
-
   return (
-    <div className="space-y-5 max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Forecast</h1>
-          <p className="text-sm text-slate-500">
-            {activeScenario
-              ? `⚠️ Stress test active: ${activeScenario.replace(/_/g, ' ')}`
-              : 'Next 90 days — AI-powered cash flow prediction'}
-          </p>
+    <div className="min-h-full bg-background text-foreground">
+      <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+
+        {/* Page header */}
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans mb-1.5">
+              {activeScenario
+                ? `Stress test · ${activeScenario.replace(/_/g, ' ')}`
+                : 'AI-powered · 90-day outlook'}
+            </p>
+            <h1 className="font-display text-5xl text-foreground leading-none">Forecast</h1>
+          </div>
+          <div className="flex items-center gap-2 pb-1">
+            <button
+              onClick={() => setStressOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-accent px-4 py-2 text-sm text-foreground font-sans transition-all"
+            >
+              <Zap size={13} className="text-gold-500" />
+              Stress test
+            </button>
+            <button
+              onClick={() => regenerate.mutate()}
+              disabled={regenerate.isPending}
+              className="flex items-center gap-2 rounded-lg border border-border bg-card hover:bg-accent px-4 py-2 text-sm text-foreground font-sans transition-all disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={regenerate.isPending ? 'animate-spin' : ''} />
+              Regenerate
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setStressOpen(true)}
-          >
-            <Zap className="mr-2 h-3.5 w-3.5" />
-            Stress test
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={regenerate.isPending}
-            onClick={() => regenerate.mutate()}
-          >
-            <RefreshCw className={`mr-2 h-3.5 w-3.5 ${regenerate.isPending ? 'animate-spin' : ''}`} />
-            Regenerate
-          </Button>
+
+        {/* Cash gap banner */}
+        <CashGapBanner
+          gaps={gaps}
+          onAdjustSplit={() => nav('/app/splits')}
+          onRequestDeferral={() => nav('/app/deferrals')}
+        />
+
+        {/* Calendar card */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          {fLoading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <ForecastCalendar events={activeEvents} cashGaps={gaps} onDayClick={handleDayClick} />
+          )}
         </div>
+
+        {/* Chart card */}
+        {!fLoading && (
+          <div className="rounded-xl border border-border bg-card p-6">
+            <CumulativeCashChart events={activeEvents} />
+          </div>
+        )}
       </div>
 
-      {/* Cash gap banner */}
-      <CashGapBanner
-        gaps={gaps}
-        onAdjustSplit={() => nav('/app/splits')}
-        onRequestDeferral={() => nav('/app/deferrals')}
-      />
-
-      {/* Calendar */}
-      {fLoading ? (
-        <div className="space-y-2">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-md" />
-          ))}
-        </div>
-      ) : (
-        <ForecastCalendar
-          events={activeEvents}
-          cashGaps={gaps}
-          onDayClick={handleDayClick}
-        />
-      )}
-
-      {/* Cumulative chart */}
-      {!fLoading && <CumulativeCashChart events={activeEvents} />}
-
-      {/* Reasons drawer */}
       <ForecastReasonsDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         date={selectedDate}
         events={selectedEvents}
       />
-
-      {/* Stress test console */}
       <StressTestConsole
         open={stressOpen}
         onClose={() => setStressOpen(false)}
         onRun={handleRunStress}
-        onReset={handleResetStress}
+        onReset={() => { setActiveScenario(null); setStressedForecast(null); }}
         isLoading={stressTest.isPending}
         activeScenario={activeScenario}
         result={stressedForecast}

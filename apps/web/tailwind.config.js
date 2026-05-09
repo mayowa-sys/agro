@@ -1,53 +1,36 @@
+const { fontFamily } = require('tailwindcss/defaultTheme');
+
 /** @type {import('tailwindcss').Config} */
-export default {
-  darkMode: ['class'],
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+module.exports = {
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
   theme: {
     extend: {
-      colors: {
-        leaf:  { DEFAULT: '#2f5d3a', light: '#406b4a' },
-        gold:  { DEFAULT: '#c98a2b', light: '#e0a850' },
-        clay:  { DEFAULT: '#b3543a' },
-        cream: { DEFAULT: '#f7f1e6', dark: '#efe6d4' },
-        ink:   { DEFAULT: '#2a241e', mid: '#4f463d', soft: '#6b6258' },
-        border: 'hsl(var(--border))',
-        input:  'hsl(var(--input))',
-        ring:   'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
-        },
-        secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
-        },
-        muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
-        },
-        accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
-        },
-        destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
-        },
-        card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
-        },
-        popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
-        },
+      fontFamily: {
+        ojuju: ['Ojuju', 'sans-serif'],
+        display: ['DM Serif Display', 'serif'],
+        sans: ['DM Sans', ...fontFamily.sans],
       },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+      colors: {
+        leaf: {
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+        },
+        gold: {
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#d97706',
+        },
+        clay: '#c8714a',
+        cream: {
+          100: '#fdf8f0',
+          200: '#f7ede0',
+        },
+        ink: '#1a1410',
       },
     },
   },
