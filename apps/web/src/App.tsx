@@ -6,6 +6,7 @@ import { RequireRole } from '@/components/auth/RequireRole';
 import { AppShell } from '@/components/layout/AppShell';
 import { Login } from '@/routes/public/Login';
 import Dashboard from '@/routes/farmer/Dashboard';
+import Forecast from '@/routes/farmer/Forecast';
 
 export function App() {
   const hydrate = useAuth((s) => s.hydrate);
@@ -21,7 +22,7 @@ export function App() {
             <Route path="/app" element={<AppShell />}>
               <Route path="dashboard" element={<Dashboard />} />
               {/* Mayowa's pages — uncomment as each is built */}
-              {/* <Route path="forecast" element={<Forecast />} /> */}
+               <Route path="forecast" element={<Forecast />} />
               {/* <Route path="splits" element={<SplitRules />} /> */}
               {/* <Route path="deferrals" element={<Deferrals />} /> */}
               {/* <Route path="season-replay" element={<SeasonReplay />} /> */}
