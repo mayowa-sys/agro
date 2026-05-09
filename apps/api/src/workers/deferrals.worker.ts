@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import { bullRedis } from '../lib/redis';
 import { prisma } from '../lib/prisma';
 import { squadClient } from '../squad/squad.client';
+import { splitsQueue } from '../lib/queues';
 
 new Worker('deferrals', async (job) => {
 
@@ -112,6 +113,16 @@ new Worker('deferrals', async (job) => {
         },
       },
     });
+
+    // Route remainder to splits after deferral repayment
+    const remainder = (job.data.amount ? BigInt(job.data.amount) : 0n) - repayAmount;
+    if (remainder > 100000n) {
+      await splitsQueue.add('route', {
+        transactionId: job.data.transactionId ?? null,
+        farmerId: deferral.farmerId,
+        amount: remainder.toString(),
+      });
+    }
 
     console.log(`Deferral ${targetDeferralId} repaid (manual: ${manual ?? false})`);
   }
