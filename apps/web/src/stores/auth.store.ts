@@ -10,6 +10,7 @@ export interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
+  hydrated: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
   hydrate: () => void;
@@ -18,6 +19,7 @@ interface AuthState {
 export const useAuth = create<AuthState>((set) => ({
   user: null,
   token: null,
+  hydrated: false,
   login: (token, user) => {
     localStorage.setItem('agro_token', token);
     localStorage.setItem('agro_user', JSON.stringify(user));
@@ -32,7 +34,9 @@ export const useAuth = create<AuthState>((set) => ({
     const token = localStorage.getItem('agro_token');
     const userStr = localStorage.getItem('agro_user');
     if (token && userStr) {
-      try { set({ token, user: JSON.parse(userStr) }); } catch { /* ignore */ }
+      try { set({ token, user: JSON.parse(userStr), hydrated: true }); } catch { set({ hydrated: true }); }
+    } else {
+      set({ hydrated: true });
     }
   },
 }));

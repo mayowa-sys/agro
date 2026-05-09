@@ -66,7 +66,7 @@ deferralsRouter.post('/', requireAuth, requireRole('FARMER'), async (req: AuthRe
 deferralsRouter.post('/:id/approve', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const deferral = await prisma.inputDeferral.findUnique({
-      where: { id: req.params.id },
+      where: { id: String(req.params.id) },
     });
     if (!deferral) return next(new AppError(404, 'Deferral not found'));
     if (deferral.status !== 'PENDING') {
@@ -85,7 +85,7 @@ deferralsRouter.post('/:id/repay-now', requireAuth, requireRole('FARMER'), async
     const farmer = await prisma.farmer.findUnique({ where: { userId: req.user!.id } });
     if (!farmer) return next(new AppError(404, 'Farmer not found'));
 
-    const deferral = await prisma.inputDeferral.findUnique({ where: { id: req.params.id } });
+    const deferral = await prisma.inputDeferral.findUnique({ where: { id: String(req.params.id) } });
     if (!deferral) return next(new AppError(404, 'Deferral not found'));
     if (deferral.farmerId !== farmer.id) return next(new AppError(403, 'Not your deferral'));
     if (deferral.status !== 'ACTIVE') {

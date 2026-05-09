@@ -49,7 +49,7 @@ export function CumulativeCashChart({ events, days = 90 }: Props) {
         Cumulative position · {days}-day outlook
       </p>
       <ResponsiveContainer width="100%" height={160}>
-        <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 8, right: 16, left: 10, bottom: 0 }}>
           <defs>
             <linearGradient id="ciUp" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#22c55e" stopOpacity={0.15} />
@@ -72,7 +72,11 @@ export function CumulativeCashChart({ events, days = 90 }: Props) {
             width={48}
           />
           <Tooltip
-            formatter={(val) => [formatNaira(Number(val) * 100), '']}
+              formatter={(val, name) => {
+                if (name === 'upper') return [formatNaira(Number(val) * 100), 'Optimistic'];
+                if (name === 'cumulative') return [formatNaira(Number(val) * 100), 'Projected'];
+                return [formatNaira(Number(val) * 100), name];
+              }}
             contentStyle={{
               background: 'hsl(var(--popover))',
               border: '1px solid hsl(var(--border))',

@@ -43,7 +43,7 @@ accountsRouter.get('/:id/transactions', async (req: AuthRequest, res, next) => {
     if (!farmer) return next(new AppError(404, 'Farmer profile not found'));
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 20;
-    const result = await getAccountTransactions(req.params.id, farmer.id, page, pageSize);
+    const result = await getAccountTransactions(String(req.params.id), farmer.id, page, pageSize);
     res.json(result);
   } catch (err) { next(err); }
 });
@@ -54,7 +54,7 @@ accountsRouter.post('/:id/refresh-balance', async (req: AuthRequest, res, next) 
     const { prisma } = await import('../lib/prisma');
     const farmer = await prisma.farmer.findUnique({ where: { userId: req.user!.id } });
     if (!farmer) return next(new AppError(404, 'Farmer profile not found'));
-    const account = await refreshAccountBalance(req.params.id, farmer.id);
+    const account = await refreshAccountBalance(String(req.params.id), farmer.id);
     res.json({ account });
   } catch (err) { next(err); }
 });

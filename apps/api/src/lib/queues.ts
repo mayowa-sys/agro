@@ -1,11 +1,8 @@
 import { Queue } from 'bullmq';
-import { redis } from './redis';
+import { bullRedis } from './redis';
 
-const connection = { connection: redis };
-const defaultJobOptions = {
-  attempts: 3,
-  backoff: { type: 'exponential' as const, delay: 1000 },
-};
+const connection = { connection: bullRedis };
+const defaultJobOptions = { attempts: 3, backoff: { type: 'exponential' as const, delay: 1000 } };
 
 export const splitsQueue    = new Queue('splits',    { ...connection, defaultJobOptions });
 export const factoringQueue = new Queue('factoring', { ...connection, defaultJobOptions });
