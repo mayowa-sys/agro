@@ -63,15 +63,15 @@ export function StressTestConsole({ open, onClose, onRun, onReset, isLoading, ac
                     disabled={isLoading}
                     onClick={() => onRun(id)}
                     className={cn(
-                      'flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-all duration-150 disabled:opacity-40',
-                      isActive
-                        ? 'border-gold-500/50 bg-gold-500/5'
-                        : 'border-border bg-background hover:border-border hover:bg-accent cursor-pointer'
+                        'flex flex-col items-start gap-2 rounded-lg border p-3.5 text-left transition-all duration-150 disabled:opacity-40',
+                        isActive
+                            ? 'border-foreground/40 bg-accent'
+                            : 'border-border bg-background hover:border-border/80 hover:bg-accent/60 cursor-pointer'
                     )}
                   >
                     <Icon
-                      size={16}
-                      className={isActive ? 'text-gold-500' : 'text-muted-foreground'}
+                        size={16}
+                        className={isActive ? 'text-foreground' : 'text-muted-foreground'}
                     />
                     <div>
                       <p className={cn('text-sm font-semibold font-sans leading-tight', isActive ? 'text-foreground' : 'text-foreground')}>
@@ -80,7 +80,7 @@ export function StressTestConsole({ open, onClose, onRun, onReset, isLoading, ac
                       <p className="text-xs text-muted-foreground font-sans mt-0.5">{desc}</p>
                     </div>
                     {isActive && (
-                      <span className="text-[10px] uppercase tracking-wider text-gold-500 font-sans font-semibold">
+                        <span className="text-[10px] uppercase tracking-wider text-foreground/80 font-sans font-semibold">
                         Active
                       </span>
                     )}
@@ -100,9 +100,9 @@ export function StressTestConsole({ open, onClose, onRun, onReset, isLoading, ac
 
           {/* Result */}
           {result && active && !isLoading && (
-            <div className="rounded-lg border border-gold-500/25 bg-gold-500/5 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <active.Icon size={14} className="text-gold-500" />
+              <div className="rounded-lg border border-border bg-accent/40 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <active.Icon size={14} className="text-foreground" />
                 <p className="text-xs font-semibold text-foreground font-sans uppercase tracking-wide">
                   {active.label} scenario
                 </p>

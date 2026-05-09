@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { addDays, format, startOfDay, isWithinInterval, parseISO, isSameDay } from 'date-fns';
-import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatNaira } from '@/lib/format';
 
@@ -60,15 +60,6 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
     return map;
   }, [events]);
 
-  const maxAmount = useMemo(() => {
-    let max = 0;
-    Object.values(eventsByDate).forEach((evs) => {
-      const net = Math.abs(evs.reduce((s, e) => s + e.amount, 0));
-      if (net > max) max = net;
-    });
-    return max || 1;
-  }, [eventsByDate]);
-
   const isInGap = (date: Date) =>
     cashGaps.some((gap) =>
       isWithinInterval(date, {
@@ -82,20 +73,20 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans">Cash flow calendar</p>
-        <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
+        <div className="flex gap-1 bg-muted/60 rounded-lg p-1 border border-border">
           {(['week', 'month', 'quarter'] as TabView[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setView(t)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 font-sans capitalize',
-                view === t
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {t === 'week' ? '7D' : t === 'month' ? '30D' : '90D'}
-            </button>
+              <button
+                  key={t}
+                  onClick={() => setView(t)}
+                  className={cn(
+                      'px-4 py-1.5 text-xs font-semibold rounded-md transition-all duration-150 font-sans tracking-wide',
+                      view === t
+                          ? 'bg-foreground text-background shadow-md'
+                          : 'text-muted-foreground hover:text-foreground'
+                  )}
+              >
+                {t === 'week' ? '7D' : t === 'month' ? '30D' : '90D'}
+              </button>
           ))}
         </div>
       </div>
@@ -121,7 +112,6 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
               const isToday = isSameDay(day, new Date());
               const hasEvents = dayEvents.length > 0;
               const isPositive = net >= 0;
-              const barH = net !== 0 ? Math.max(4, (Math.abs(net) / maxAmount) * 28) : 0;
               const hasSignificant = dayEvents.some((e) => Math.abs(e.amount) >= 500_000);
 
               return (
@@ -141,36 +131,26 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
                 >
                   {/* Day number */}
                   <span className={cn(
-                    'text-[15px] font-semibold leading-none font-sans tabular-nums',
-                    isToday ? 'text-leaf-500' : hasEvents ? 'text-foreground' : 'text-muted-foreground'
+                      'text-base font-semibold leading-none font-sans tabular-nums mt-1',
+                      isToday ? 'text-leaf-500' : hasEvents ? 'text-foreground' : 'text-muted-foreground'
                   )}>
                     {format(day, 'd')}
                   </span>
 
-                  {/* Bar — sits directly below number */}
-                  <div className="w-full flex items-end justify-center px-2 mt-1.5">
-                    {net !== 0 && (
-                      <div
-                        className={cn('w-full rounded-sm', isPositive ? 'bg-leaf-500' : 'bg-destructive/80')}
-                        style={{ height: barH }}
-                      />
-                    )}
-                  </div>
-
-                  {/* Amount — tight below bar */}
+                  {/* Amount with separator */}
                   {hasSignificant && (
-                    <span className={cn(
-                      'text-[10px] font-bold leading-none mt-1 font-sans tabular-nums',
-                      isPositive ? 'text-leaf-500' : 'text-destructive'
-                    )}>
-                      {formatNaira(Math.abs(net), { compact: true })}
-                    </span>
+                      <>
+                        <span className="block w-6 h-px bg-border mt-2 mb-1.5" />
+                        <span className="text-[13px] font-bold leading-none font-sans tabular-nums text-foreground">
+                        {isPositive ? '+' : '−'}{formatNaira(Math.abs(net), { compact: true })}
+                      </span>
+                      </>
                   )}
 
                   {/* Gap indicator */}
                   {inGap && (
-                    <span className="absolute top-1.5 right-1.5">
-                      <AlertTriangle size={8} className="text-gold-500" />
+                      <span className="absolute top-1.5 right-1.5">
+                      <AlertTriangle size={9} className="text-gold-500" />
                     </span>
                   )}
                 </button>
@@ -183,13 +163,13 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
       {/* Legend — icons */}
       <div className="flex items-center gap-5 pt-1">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
-          <TrendingUp size={12} className="text-leaf-500" /> Income
+          <span className="text-leaf-600 font-bold">+</span> Income day
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
-          <TrendingDown size={12} className="text-destructive" /> Expense
+          <span className="text-destructive font-bold">−</span> Expense day
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
-          <AlertTriangle size={12} className="text-gold-500" /> Cash gap
+          <AlertTriangle size={11} className="text-gold-500" /> Cash gap
         </span>
       </div>
     </div>

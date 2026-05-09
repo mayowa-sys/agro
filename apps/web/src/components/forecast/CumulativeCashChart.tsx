@@ -30,7 +30,6 @@ export function CumulativeCashChart({ events, days = 90 }: Props) {
         date: format(date, 'MMM d'),
         cumulative: naira,
         upper: naira * 1.12,
-        lower: naira * 0.88,
       };
     });
   }, [events, days]);
@@ -57,17 +56,17 @@ export function CumulativeCashChart({ events, days = 90 }: Props) {
               <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="2 4" stroke="#27272a" vertical={false} />
+          <CartesianGrid strokeDasharray="2 4" stroke="hsl(var(--border))" vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 9, fill: '#52525b', fontFamily: 'DM Sans' }}
+            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontFamily: 'DM Sans' }}
             tickLine={false}
             axisLine={false}
             interval={Math.floor(days / 5)}
           />
           <YAxis
             tickFormatter={fmtY}
-            tick={{ fontSize: 9, fill: '#52525b', fontFamily: 'DM Sans' }}
+            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontFamily: 'DM Sans' }}
             tickLine={false}
             axisLine={false}
             width={48}
@@ -75,15 +74,15 @@ export function CumulativeCashChart({ events, days = 90 }: Props) {
           <Tooltip
             formatter={(val) => [formatNaira(Number(val) * 100), '']}
             contentStyle={{
-              background: '#18181b',
-              border: '1px solid #3f3f46',
+              background: 'hsl(var(--popover))',
+              border: '1px solid hsl(var(--border))',
               borderRadius: 6,
-              fontSize: 11,
+              fontSize: 12,
               fontFamily: 'DM Sans',
-              color: '#e4e4e7',
+              color: 'hsl(var(--popover-foreground))',
             }}
-            labelStyle={{ color: '#71717a', fontSize: 10 }}
-            cursor={{ stroke: '#3f3f46', strokeWidth: 1 }}
+            labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+            cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
           />
           <ReferenceLine
             y={0}
@@ -91,8 +90,7 @@ export function CumulativeCashChart({ events, days = 90 }: Props) {
             strokeWidth={hasGap ? 1.5 : 1}
             strokeDasharray="3 3"
           />
-          <Area type="monotone" dataKey="upper" stroke="none" fill="url(#ciUp)" fillOpacity={1} />
-          <Area type="monotone" dataKey="lower" stroke="none" fill="#09090b" fillOpacity={1} />
+          <Area type="monotone" dataKey="upper" stroke="none" fill="url(#ciUp)" fillOpacity={1} />upper: naira * 1.12,
           <Area
             type="monotone"
             dataKey="cumulative"

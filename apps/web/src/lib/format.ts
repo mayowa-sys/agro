@@ -1,7 +1,6 @@
 export function koboToNaira(kobo: bigint | number | string): number {
-  return Number(BigInt(kobo)) / 100;
+  return Number(kobo) / 100;
 }
-
 export function formatNaira(
   kobo: bigint | number | string,
   opts: { compact?: boolean; showSign?: boolean } = {}

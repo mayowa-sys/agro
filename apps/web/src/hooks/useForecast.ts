@@ -46,7 +46,13 @@ export function useCashGaps() {
 export function useRegenerateForecast() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post('/forecasts/me/regenerate'),
+    mutationFn: async () => {
+      const [result] = await Promise.all([
+        api.post('/forecasts/me/regenerate'),
+        new Promise((r) => setTimeout(r, 1200)),
+      ]);
+      return result;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['forecast'] }),
   });
 }

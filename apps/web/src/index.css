@@ -55,12 +55,24 @@
   }
 
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    transition: background-color 250ms ease, color 250ms ease;
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-family: 'DM Sans', sans-serif;
+    transition: background-color 250ms ease, color 250ms ease;
+  }
+
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
   }
 
   h1, h2, h3 {
