@@ -68,8 +68,12 @@ All §1.1–1.11 complete — repo, monorepo, env, docker, shared types, externa
 - koboToNaira fix — Number() not BigInt() (handles floats from chart calculations)
 - useForecast normalizes expectedAmount/expectedDate API shape
 
-## Phase 7: Frontend — Split Rules editor 🟡
-*(starting next — §7.1)*
+## Phase 7: Frontend — Split Rules editor ✅
+### §7.1 Split Rules editor ✅
+- useSplitRules.ts — useSplitRule (normalises workingPct→workingCapitalPct), useSplitSuggestion (normalises suggestion shape), useSaveSplitRule (sends workingPct), useLinkedSliders (proportional distribution, always sums to 100)
+- SplitRules.tsx — stacked bar, custom DOM-driven sliders (rAF, no React re-render during drag, willChange GPU hint), AI suggestion card with apply, what-if Recharts preview (client-side, live on slider move), sticky save bar, graph info overlay (backdrop blur, DM Serif, leaf accent)
+- Forecast.tsx — chart card header + info overlay wired
+- Route /app/splits live
 
 ## Phase 8: Frontend — Deferrals page
 *(not started)*
