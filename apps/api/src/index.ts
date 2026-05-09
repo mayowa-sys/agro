@@ -1,5 +1,9 @@
 import path from 'path';
 import dotenv from 'dotenv';
+import './workers';
+
+(BigInt.prototype as any).toJSON = function () { return this.toString(); };
+
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 import { createApp } from './app';

@@ -111,7 +111,7 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 ### §3.1 BullMQ + Redis setup
 - ✅ `src/lib/redis.ts` created
 - ✅ `src/lib/queues.ts` created (splitsQueue, factoringQueue, deferralsQueue, briefsQueue, forecastsQueue)
-- ⬜ `src/workers/index.ts` created
+- ✅ `src/workers/index.ts` created
 
 ### §3.2 Virtual Accounts module
 - ⬜ `src/services/accounts.service.ts` created
