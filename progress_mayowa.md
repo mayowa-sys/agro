@@ -8,7 +8,7 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 - ⬜ Not started
 - 🚫 Blocked (waiting on something)
 
-**Current status:** Phase 1 ✅ complete, Phase 2 ✅ complete — starting Phase 3 (money-movement modules)
+**Current status:** Phase 1 ✅ complete, Phase 2 ✅ complete, Phase 3 🟡 in progress (§3.4 next)
 
 ---
 
@@ -65,7 +65,7 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 - ✅ `tsconfig.json` created (excludes prisma.config.ts)
 - ✅ `src/app.ts`, `src/index.ts`, `src/routes/index.ts`, `src/lib/prisma.ts`, `src/lib/errors.ts` created
 - ✅ `npm run dev` serves `/health`
-- ✅ dotenv loaded with explicit path to root `.env`
+- ✅ dotenv loaded via `-r dotenv/config` + `apps/api/.env` symlinked to root `.env`
 
 ### §1.9 Database schema (Prisma)
 - ✅ `schema.prisma` written (Prisma v7 — enums on separate lines, no url in schema)
@@ -99,33 +99,34 @@ Living checklist of what's done, in progress, and blocked. Updated after each ma
 - ✅ HMAC-SHA512 signature verification (x-squad-signature header)
 - ✅ Idempotency via Redis (7-day TTL per event ID)
 - ✅ Routes to splitsQueue or deferralsQueue depending on active deferrals
-- ✅ Mock trigger endpoint at POST /squad/mock/trigger-webhook confirmed working
+- ✅ Mock trigger self-POSTs via axios with correct signature — confirmed working end-to-end
 - ✅ Mounted at /squad in registerRoutes
 - ✅ Committed as feat/api-squad-integration
 
 ---
 
-## Phase 3: Money-movement modules
-🟡 Starting now
+## Phase 3: Money-movement modules 🟡
 
 ### §3.1 BullMQ + Redis setup
-- ✅ `src/lib/redis.ts` created
-- ✅ `src/lib/queues.ts` created (splitsQueue, factoringQueue, deferralsQueue, briefsQueue, forecastsQueue)
+- ✅ `src/lib/redis.ts` — exports `redis` (general) and `bullRedis` (maxRetriesPerRequest: null)
+- ✅ `src/lib/queues.ts` — 5 queues using bullRedis
 - ✅ `src/workers/index.ts` created
 
 ### §3.2 Virtual Accounts module
-- ⬜ `src/services/accounts.service.ts` created
-- ⬜ `src/routes/accounts.routes.ts` created
-- ⬜ Mounted in registerRoutes
+- ✅ `src/services/accounts.service.ts` created
+- ✅ `src/routes/accounts.routes.ts` created
+- ✅ Mounted in registerRoutes
+- ✅ Idempotent setup, BigInt serialization, verified end-to-end
 
 ### §3.3 Split routing module
-- ⬜ `src/routes/splits.routes.ts` created
-- ⬜ `src/workers/splits.worker.ts` created
-- ⬜ Edge cases handled (< ₦1000, active deferral priority)
+- ✅ `src/routes/splits.routes.ts` created (GET/PUT /split-rules/me, POST /split-rules/me/suggest)
+- ✅ `src/workers/splits.worker.ts` created (uses bullRedis)
+- ✅ Edge cases handled (< ₦1000 skip, active deferral priority in webhook router)
+- ✅ Verified end-to-end: mock webhook → splits fire → balances updated correctly
 
 ### §3.4 Deferrals module
-- ⬜ `src/routes/deferrals.routes.ts` created
-- ⬜ `src/workers/deferrals.worker.ts` created
+- ✅ `src/routes/deferrals.routes.ts` created
+- ✅ `src/workers/deferrals.worker.ts` created
 
 ### §3.5 Factoring module
 - ⬜ `src/routes/factoring.routes.ts` created
