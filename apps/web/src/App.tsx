@@ -9,6 +9,7 @@ import Dashboard from '@/routes/farmer/Dashboard';
 import Forecast from '@/routes/farmer/Forecast';
 import SplitRules from '@/routes/farmer/SplitRules';
 import Deferrals from '@/routes/farmer/Deferrals';
+import Jobs from '@/routes/farmer/Jobs'
 
 export function App() {
   const hydrate = useAuth((s) => s.hydrate);
@@ -27,6 +28,7 @@ export function App() {
                <Route path="forecast" element={<Forecast />} />
                <Route path="splits" element={<SplitRules />} />
                <Route path="deferrals" element={<Deferrals />} />
+                <Route path="jobs" element={<Jobs />} />
               {/* <Route path="season-replay" element={<SeasonReplay />} /> */}
             </Route>
           </Route>
