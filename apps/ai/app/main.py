@@ -115,3 +115,34 @@ def split_suggest_endpoint(req: SplitSuggestRequest):
                 best = {"workingPct": working, "billsPct": bills, "nextSeasonPct": next_season}
 
     return {**best, "expectedGapDays": best_gap_days}
+
+from app.embeddings import embed_labourer_profile, embed_job_description
+from app.match import jobs_for_labourer, labourers_for_job
+from app.demand import compute_demand_signals
+
+@app.post("/embeddings/labourer", dependencies=[Depends(verify_token)])
+async def embed_labourer(body: dict):
+    """Compute and return embedding for a labourer profile."""
+    embedding_json = embed_labourer_profile(body)
+    return {"embedding": embedding_json}
+
+@app.post("/embeddings/job", dependencies=[Depends(verify_token)])
+async def embed_job(body: dict):
+    """Compute and return embedding for a job description."""
+    embedding_json = embed_job_description(body)
+    return {"embedding": embedding_json}
+
+@app.get("/match/jobs-for-labourer/{labourer_id}", dependencies=[Depends(verify_token)])
+async def get_jobs_for_labourer(labourer_id: str, limit: int = 20):
+    results = await jobs_for_labourer(labourer_id, limit=limit)
+    return {"matches": results, "count": len(results)}
+
+@app.get("/match/labourers-for-job/{job_id}", dependencies=[Depends(verify_token)])
+async def get_labourers_for_job(job_id: str, limit: int = 20):
+    results = await labourers_for_job(job_id, limit=limit)
+    return {"matches": results, "count": len(results)}
+
+@app.get("/demand-signals/{farmer_id}", dependencies=[Depends(verify_token)])
+async def get_demand_signals(farmer_id: str):
+    signals = await compute_demand_signals(farmer_id)
+    return signals
