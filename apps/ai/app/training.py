@@ -41,6 +41,7 @@ def train_crop_model(crop: str) -> Prophet:
         daily_seasonality=False,
         seasonality_mode="multiplicative",
         interval_width=0.80,
+        stan_backend="CMDSTANPY",
     )
     model.fit(df)
     return model

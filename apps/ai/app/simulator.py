@@ -140,12 +140,13 @@ def generate_farmer_year(
 def generate_dataset(crop_type: str, n_farmers: int = 100) -> List[Dict[str, Any]]:
     """Generate n_farmers synthetic farmer-years for a given crop."""
     all_events = []
-    base_date = datetime(2023, 3, 1)
     for i in range(n_farmers):
-        planting_date = base_date + timedelta(days=random.randint(-30, 30))
-        events = generate_farmer_year(crop_type, "Nigeria", planting_date, seed=i)
-        for e in events:
-            e["farmer_id"] = f"synthetic_{crop_type.lower()}_{i}"
-            e["crop_type"] = crop_type
-        all_events.extend(events)
+        for year_offset, base_year in enumerate([2023, 2024, 2025, 2026]):
+            base_date = datetime(base_year, 3, 1)
+            planting_date = base_date + timedelta(days=random.randint(-30, 30))
+            events = generate_farmer_year(crop_type, "Nigeria", planting_date, seed=i + year_offset * 1000)
+            for e in events:
+                e["farmer_id"] = f"synthetic_{crop_type.lower()}_{i}"
+                e["crop_type"] = crop_type
+            all_events.extend(events)
     return all_events

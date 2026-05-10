@@ -35,6 +35,7 @@ class ForecastRequest(BaseModel):
     planting_date: Optional[str] = None
     expected_harvest_date: Optional[str] = None
     transaction_history: List[TransactionItem] = []
+    horizon_days: int = 90
 
 class StressTestRequest(BaseModel):
     crop_type: str
@@ -57,6 +58,7 @@ def forecast_endpoint(req: ForecastRequest):
             planting_date=req.planting_date,
             expected_harvest_date=req.expected_harvest_date,
             transaction_history=[t.model_dump() for t in req.transaction_history],
+            horizon_days=req.horizon_days,
         )
         return result
     except FileNotFoundError as e:

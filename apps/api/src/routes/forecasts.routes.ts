@@ -44,6 +44,51 @@ forecastsRouter.get('/me/cash-gaps', requireAuth, requireRole('FARMER'), async (
   } catch (err) { next(err); }
 });
 
+// GET /forecasts/me/projected-balance — daily running balance series
+forecastsRouter.get('/me/projected-balance', requireAuth, requireRole('FARMER'), async (req: AuthRequest, res, next) => {
+  try {
+    const farmer = await prisma.farmer.findUnique({ where: { userId: req.user!.id } });
+    if (!farmer) return next(new AppError(404, 'Farmer not found'));
+
+    const forecast = await prisma.forecast.findFirst({
+      where: { farmerId: farmer.id },
+      orderBy: { generatedAt: 'desc' },
+      include: { events: { orderBy: { expectedDate: 'asc' } } },
+    });
+
+    if (!forecast) return res.json({ series: [], horizonDays: 180 });
+
+    // Build daily balance series in kobo from sorted events
+    const horizonDays = forecast.horizonDays ?? 180;
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const byDay = new Map<number, bigint>();
+    for (const e of forecast.events) {
+      const eventDate = new Date(e.expectedDate);
+      eventDate.setUTCHours(0, 0, 0, 0);
+      const dayOffset = Math.floor((eventDate.getTime() - today.getTime()) / 86400000);
+      if (dayOffset < 0 || dayOffset > horizonDays) continue;
+      const delta = e.type === 'INCOME' ? e.expectedAmount : -e.expectedAmount;
+      byDay.set(dayOffset, (byDay.get(dayOffset) ?? 0n) + delta);
+    }
+
+    let running = 0n;
+    const series: Array<{ day: number; date: string; balanceKobo: string }> = [];
+    for (let d = 0; d <= horizonDays; d++) {
+      running += byDay.get(d) ?? 0n;
+      const date = new Date(today.getTime() + d * 86400000);
+      series.push({
+        day: d,
+        date: date.toISOString(),
+        balanceKobo: running.toString(),
+      });
+    }
+
+    res.json({ series, horizonDays });
+  } catch (err) { next(err); }
+});
+
 // POST /forecasts/me/regenerate
 forecastsRouter.post('/me/regenerate', requireAuth, requireRole('FARMER'), async (req: AuthRequest, res, next) => {
   try {

@@ -38,13 +38,14 @@ export async function runForecast(farmerId: string) {
     planting_date: farmer.plantingDate?.toISOString() ?? null,
     expected_harvest_date: farmer.expectedHarvestDate?.toISOString() ?? null,
     transaction_history: transactionHistory,
+    horizon_days: 180,
   });
 
   const forecast = await prisma.forecast.create({
     data: {
       farmerId,
       modelVersion: data.model_version ?? 'v1',
-      horizonDays: 90,
+      horizonDays: 180,
       events: {
         create: data.events.map((e: any) => ({
           expectedDate: new Date(e.date),

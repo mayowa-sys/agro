@@ -67,6 +67,8 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
         end: startOfDay(parseISO(gap.endDate)),
       })
     );
+  const isGapStart = (date: Date) =>
+    cashGaps.some((gap) => isSameDay(date, parseISO(gap.startDate)));
 
   return (
     <div className="space-y-4">
@@ -121,8 +123,10 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
                   className={cn(
                     'group relative flex flex-col items-center rounded-lg transition-all duration-150 min-h-[76px] pt-2.5 pb-2 px-1',
                     'border',
-                    inGap
-                      ? 'border-gold-500/40 bg-gold-500/5 hover:bg-gold-500/10'
+                    isGapStart(day)
+                      ? 'border-orange-500/60 bg-orange-500/[0.12] hover:bg-orange-500/[0.18]'
+                      : inGap
+                      ? 'border-orange-500/15 bg-orange-500/[0.05] hover:bg-orange-500/[0.08]'
                       : hasEvents
                       ? 'border-border bg-card hover:bg-accent cursor-pointer'
                       : 'border-border/50 bg-background/40 hover:bg-accent/40',
@@ -147,10 +151,10 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
                       </>
                   )}
 
-                  {/* Gap indicator */}
-                  {inGap && (
+                  {/* Gap indicator — only on gap start */}
+                  {isGapStart(day) && (
                       <span className="absolute top-1.5 right-1.5">
-                      <AlertTriangle size={9} className="text-gold-500" />
+                      <AlertTriangle size={9} className="text-orange-500" />
                     </span>
                   )}
                 </button>

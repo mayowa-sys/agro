@@ -63,3 +63,10 @@ export function useStressTest() {
       api.post('/forecasts/me/stress-test', { scenario }).then((r) => r.data),
   });
 }
+
+export function useProjectedBalance() {
+  return useQuery({
+    queryKey: ['forecast', 'projected-balance'],
+    queryFn: () => api.get('/forecasts/me/projected-balance').then(r => r.data),
+  });
+}
