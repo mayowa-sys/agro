@@ -10,6 +10,7 @@ import {
 import { useLanguage } from '@/hooks/useLanguage'
 import { useWageAdvances } from '@/hooks/useLabourer';
 import { WageAdvanceBanner } from '@/components/labourer/WageAdvanceBanner'
+import { MatchDrawer } from '@/components/labourer/MatchDrawer'
 import { LABOURER_STRINGS } from '@/i18n/labourer';
 
 const CLAY = '#a0522d'
@@ -225,6 +226,7 @@ export default function LabourerDashboard() {
   const { data: gigsData } = useLabourerGigs()
   const [confirmGig, setConfirmGig] = useState<any>(null)
   const [acceptJob, setAcceptJob] = useState<any>(null)
+  const [matchJob, setMatchJob] = useState<any>(null)
   const { language: lang, setLanguage } = useLanguage();
   const { data: advanceData } = useWageAdvances()
   const outstandingAdvance = advanceData?.advances?.find((a: any) => a.status === 'APPROVED')
@@ -442,7 +444,7 @@ export default function LabourerDashboard() {
               return (
                 <button
                   key={job.jobId}
-                  onClick={() => setAcceptJob(job)}
+                  onClick={() => setMatchJob(job)}
                   className="group block w-full rounded-2xl p-6 text-left transition-all hover:shadow-md"
                   style={{
                     background: 'hsl(var(--card))',
@@ -608,6 +610,12 @@ export default function LabourerDashboard() {
           onClose={() => setConfirmGig(null)}
         />
       )}
+      <MatchDrawer
+        job={matchJob}
+        open={!!matchJob}
+        onClose={() => setMatchJob(null)}
+        onAccept={() => { setAcceptJob(matchJob); setMatchJob(null) }}
+      />
       {acceptJob && (
         <AcceptJobDialog job={acceptJob} onClose={() => setAcceptJob(null)} />
       )}
