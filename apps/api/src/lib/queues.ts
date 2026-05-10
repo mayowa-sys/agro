@@ -9,3 +9,4 @@ export const factoringQueue = new Queue('factoring', { ...connection, defaultJob
 export const deferralsQueue = new Queue('deferrals', { ...connection, defaultJobOptions });
 export const briefsQueue    = new Queue('briefs',    { ...connection, defaultJobOptions });
 export const forecastsQueue = new Queue('forecasts', { ...connection, defaultJobOptions });
+export const wagesQueue     = new Queue('wages',     { ...connection, defaultJobOptions });

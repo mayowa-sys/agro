@@ -42,6 +42,25 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
       where: { virtualAccount: { farmerId: TUNDE_FARMER_ID } },
     });
 
+    // Ensure accounts exist (may have been wiped by DB reset)
+    const existingAccounts = await prisma.virtualAccount.findMany({
+      where: { farmerId: TUNDE_FARMER_ID },
+    });
+    if (existingAccounts.length === 0) {
+      const purposes = ['WORKING', 'BILLS', 'NEXT_SEASON'] as const;
+      for (const purpose of purposes) {
+        await prisma.virtualAccount.create({
+          data: {
+            farmerId: TUNDE_FARMER_ID,
+            squadAccountNumber: `010${Math.floor(Math.random() * 9000000) + 1000000}`,
+            squadCustomerId: `mock-cust-${purpose}-${Date.now()}`,
+            bankName: 'GTBank',
+            purpose,
+          },
+        });
+      }
+    }
+
     const accounts = await prisma.virtualAccount.findMany({
       where: { farmerId: TUNDE_FARMER_ID },
     });

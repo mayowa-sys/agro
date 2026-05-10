@@ -250,18 +250,18 @@ model FactoringAdvance {
   squadAdvanceTransferRef String?
   squadRepaymentRef       String?
   createdAt               DateTime        @default(now())
-  liberationLog           LiberationLog?
 }
 
 model LiberationLog {
   id                     String           @id @default(cuid())
   farmerId               String
   farmer                 Farmer           @relation(fields: [farmerId], references: [id])
-  factoringAdvanceId     String           @unique
-  factoringAdvance       FactoringAdvance @relation(fields: [factoringAdvanceId], references: [id])
+  factoringAdvanceId     String?
   counterfactualLossKobo BigInt
   loggedAt               DateTime         @default(now())
-  source LiberationSource @default(MIDDLEMAN_DISCOUNT_AVOIDED)
+  source                  LiberationSource @default(MIDDLEMAN_DISCOUNT_AVOIDED)
+  gigId                   String?
+  gig                     Gig?             @relation(fields: [gigId], references: [id])
 }
 
 model WeeklyBrief {
@@ -373,6 +373,7 @@ model Gig {
   wageTransfer        WageTransfer? @relation(fields: [wageTransferId], references: [id])
 
   rating Rating?
+  liberationLogs LiberationLog[]
 }
 
 enum GigStatus {

@@ -49,13 +49,20 @@ authRouter.post('/demo-login', async (req, res, next) => {
     return next(new AppError(403, 'Demo login not available'));
   }
   try {
-    const { farmerId } = req.body;
-    const farmer = await prisma.farmer.findUnique({ where: { id: farmerId }, include: { user: true } });
+    const { farmerId, phone } = req.body;
+    let farmer;
+    if (farmerId) {
+      farmer = await prisma.farmer.findUnique({ where: { id: farmerId }, include: { user: true } });
+    } else if (phone) {
+      farmer = await prisma.farmer.findFirst({ where: { user: { phone } }, include: { user: true } });
+    } else {
+      return next(new AppError(400, 'farmerId or phone required'));
+    }
     if (!farmer) return next(new AppError(404, 'Demo farmer not found'));
     const token = jwt.sign(
-      { id: farmer.userId, role: 'FARMER', language: farmer.user.language },
-      process.env.JWT_SECRET!,
-      { expiresIn: '1d' } as SignOptions
+        { id: farmer.userId, role: 'FARMER', language: farmer.user.language },
+        process.env.JWT_SECRET!,
+        { expiresIn: '1d' } as SignOptions
     );
     res.json({ token, user: { id: farmer.userId, phone: farmer.user.phone, role: 'FARMER' } });
   } catch (err) { next(err); }
