@@ -579,7 +579,7 @@ export default function Deferrals() {
             className="text-5xl font-bold text-foreground leading-none"
             style={{ fontFamily: '"DM Serif Display", serif' }}
           >
-            Deferrals
+            Input Credit
           </h1>
         </div>
 
@@ -661,7 +661,7 @@ export default function Deferrals() {
             className="text-xl font-bold"
             style={{ fontFamily: '"DM Serif Display", serif' }}
           >
-            My deferrals
+            My Input Credit
           </h2>
 
           {dLoading ? (

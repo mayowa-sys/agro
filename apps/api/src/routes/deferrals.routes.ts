@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/errors';
 import { requireAuth, requireRole, AuthRequest } from '../middleware/auth';
 import { deferralsQueue } from '../lib/queues';
-
+import { squadClient } from '../squad/squad.client';
 export const deferralsRouter = Router();
 
 // GET /deferrals/suppliers
@@ -67,15 +67,53 @@ deferralsRouter.post('/:id/approve', requireAuth, async (req: AuthRequest, res, 
   try {
     const deferral = await prisma.inputDeferral.findUnique({
       where: { id: String(req.params.id) },
+      include: { supplier: true },
     });
     if (!deferral) return next(new AppError(404, 'Deferral not found'));
     if (deferral.status !== 'PENDING') {
       return next(new AppError(400, `Cannot approve deferral in status ${deferral.status}`));
     }
 
-    await deferralsQueue.add('disburse', { deferralId: deferral.id });
+    const feePct = Number(process.env.AGRO_INPUT_CREDIT_FEE_PCT || '6');
+    const feeKobo = deferral.agroFee ?? (deferral.amount * BigInt(feePct) / 100n);
+    const totalRepay = deferral.amount + (deferral.amount * BigInt(feePct) / 100n);
 
-    res.json({ ok: true, message: 'Deferral approved and disbursement queued' });
+    // 1. Disburse: AGRO float → supplier
+    await squadClient.initiateTransfer({
+      amount: Number(deferral.amount) / 100, // kobo → naira
+      account_number: deferral.supplier.squadAccountNumber,
+      bank_code: '057', // GTBank default
+      currency_id: 'NGN',
+      remark: `AGRO input credit to ${deferral.supplier.name}`,
+    });
+
+    // 2. Mark DISBURSED
+    const updated = await prisma.inputDeferral.update({
+      where: { id: deferral.id },
+      data: {
+        status: 'DISBURSED',
+        disbursedAt: new Date(),
+        agroFee: feeKobo,
+      },
+    });
+
+    // 3. Write LiberationLog with methodology
+    const formula = [
+      `₦${Number(deferral.amount / 100n)} disbursed to supplier.`,
+      `Counterfactual middleman discount estimated at 30% based on Babban Gona field observations and CGAP smallholder reports.`,
+      `Expected repayment ₦${Number(totalRepay / 100n)} (principal + ${feePct}% AGRO fee).`,
+    ].join(' ');
+
+    await prisma.liberationLog.create({
+      data: {
+        farmerId: deferral.farmerId,
+        source: 'MIDDLEMAN_DISCOUNT_AVOIDED',
+        counterfactualLossKobo: deferral.amount,
+        methodologyNote: formula,
+      },
+    });
+
+    res.json(updated);
   } catch (err) { next(err); }
 });
 

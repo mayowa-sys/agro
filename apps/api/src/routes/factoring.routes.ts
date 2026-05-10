@@ -161,6 +161,7 @@ factoringRouter.get('/recent', requireAuth, async (_req, res, next) => {
           farmerName: log.farmer.name,
           counterfactualLossKobo: String(log.counterfactualLossKobo),
           source: log.source,
+          methodologyNote: log.methodologyNote,
           loggedAt: log.loggedAt.toISOString(),
         }))
     );

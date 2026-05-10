@@ -9,7 +9,9 @@ import Dashboard from '@/routes/farmer/Dashboard';
 import Forecast from '@/routes/farmer/Forecast';
 import SplitRules from '@/routes/farmer/SplitRules';
 import Deferrals from '@/routes/farmer/Deferrals';
-import Jobs from '@/routes/farmer/Jobs'
+import Jobs from '@/routes/farmer/Jobs';
+import Onboard from '@/routes/labourer/Onboard';
+import LabourerDashboard from '@/routes/labourer/LabourerDashboard';
 
 export function App() {
   const hydrate = useAuth((s) => s.hydrate);
@@ -32,6 +34,12 @@ export function App() {
               {/* <Route path="season-replay" element={<SeasonReplay />} /> */}
             </Route>
           </Route>
+            <Route element={<RequireRole role="LABOURER" />}>
+                <Route path="/app" element={<AppShell />}>
+                    <Route path="labourer/onboard" element={<Onboard />} />
+                    <Route path="labourer/dashboard" element={<LabourerDashboard />} />
+                </Route>
+            </Route>
         </Route>
       </Routes>
     </BrowserRouter>

@@ -34,7 +34,7 @@ export function Login() {
     setError(null);
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/demo-login', { farmerId: 'cmoxgcurl0009j6vi8rxt9q7x' });
+      const { data } = await api.post('/auth/demo-login', { phone: '08012345678' });
       login(data.token, data.user);
       nav('/app/dashboard');
     } catch (err: any) {
@@ -43,6 +43,21 @@ export function Login() {
       setLoading(false);
     }
   };
+
+  const demoLoginLabourer = async () => {
+      setError(null);
+      setLoading(true);
+      try {
+        const { data } = await api.post('/auth/demo-login', { phone: '08055555555' });
+        login(data.token, data.user);
+        nav('/app/labourer/dashboard');
+      } catch (err: any) {
+        setError(err.response?.data?.error ?? 'Demo login failed');
+      } finally {
+        setLoading(false);
+      }
+    };
+
 
   return (
     <div className="min-h-screen flex bg-background overflow-hidden">
@@ -269,6 +284,15 @@ export function Login() {
                 <span className="font-display italic text-leaf-600 dark:text-leaf-400">Tunde</span>
                 <span className="text-muted-foreground">→</span>
                 <span>Sign in as demo farmer</span>
+              </button>
+              <button
+                  onClick={demoLoginLabourer}
+                  disabled={loading}
+                  className="w-full border border-border bg-card hover:bg-accent py-3 rounded-lg text-sm font-medium font-sans text-foreground transition-all disabled:opacity-40 flex items-center justify-center gap-2.5"
+              >
+                <span className="font-display italic" style={{ color: 'hsl(22 63% 44%)' }}>Adamu</span>
+                <span className="text-muted-foreground">→</span>
+                <span>Sign in as demo labourer</span>
               </button>
             </>
           )}

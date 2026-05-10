@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export interface User {
   id: string;
   phone: string;
-  role: 'FARMER' | 'AGGREGATOR' | 'ADMIN';
+  role: 'FARMER' | 'AGGREGATOR' | 'ADMIN' | 'LABOURER';
   language: 'EN' | 'PIDGIN' | 'HAUSA' | 'YORUBA' | 'IGBO';
 }
 

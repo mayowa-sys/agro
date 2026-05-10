@@ -58,3 +58,12 @@ accountsRouter.post('/:id/refresh-balance', async (req: AuthRequest, res, next) 
     res.json({ account });
   } catch (err) { next(err); }
 });
+
+// GET /accounts/dashboard — farmer dashboard summary
+accountsRouter.get('/dashboard', async (req: AuthRequest, res, next) => {
+  try {
+    const { getFarmerDashboard } = await import('../services/accounts.service');
+    const dashboard = await getFarmerDashboard(req.user!.id);
+    res.json(dashboard);
+  } catch (err) { next(err); }
+});

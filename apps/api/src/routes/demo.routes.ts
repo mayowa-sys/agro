@@ -395,7 +395,10 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
       },
     });
 
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('SEED ERROR:', err);
+    next(err);
+  }
 });
 
 // POST /demo/simulate-payment

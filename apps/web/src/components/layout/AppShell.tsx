@@ -1,19 +1,26 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/stores/auth.store';
 import { useTheme } from '@/hooks/useTheme';
-import { Sun, Moon, LayoutDashboard, TrendingUp, SplitSquareHorizontal, Clock, PlayCircle } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, TrendingUp, SplitSquareHorizontal, Clock, PlayCircle, Hammer } from 'lucide-react';
 
 const farmerLinks = [
   { to: '/app/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
   { to: '/app/forecast',      label: 'Forecast',      icon: TrendingUp },
   { to: '/app/splits',        label: 'Splits',        icon: SplitSquareHorizontal },
-  { to: '/app/deferrals',     label: 'Deferrals',     icon: Clock },
+  { to: '/app/deferrals',     label: 'Input Credit',  icon: Clock },
+  { to: '/app/jobs',          label: 'Jobs',          icon: Hammer },
   { to: '/app/season-replay', label: 'Season Replay', icon: PlayCircle },
+];
+
+const labourerLinks = [
+  { to: '/app/labourer/dashboard', label: 'Dashboard', icon: Hammer },
 ];
 
 export function AppShell() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
+
+  const links = user?.role === 'LABOURER' ? labourerLinks : farmerLinks;
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -46,7 +53,7 @@ export function AppShell() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <nav className="w-56 border-r border-border p-3 hidden md:flex flex-col gap-0.5 shrink-0 bg-background">
-          {farmerLinks.map(({ to, label, icon: Icon }) => (
+          {links.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}

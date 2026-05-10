@@ -58,6 +58,7 @@ enum TransactionSource {
 enum DeferralStatus {
   PENDING
   ACTIVE
+  DISBURSED
   REPAID
   DEFAULTED
   CANCELLED
@@ -262,6 +263,7 @@ model LiberationLog {
   source                  LiberationSource @default(MIDDLEMAN_DISCOUNT_AVOIDED)
   gigId                   String?
   gig                     Gig?             @relation(fields: [gigId], references: [id])
+  methodologyNote         String?
 }
 
 model WeeklyBrief {
