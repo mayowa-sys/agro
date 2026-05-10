@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { AlertTriangle, ArrowRight, Sprout, SlidersHorizontal, Banknote, X } from 'lucide-react';
 import { formatNaira } from '@/lib/format';
 import type { CashGap } from './ForecastCalendar';
+import { InputCreditDialog } from './InputCreditDialog'
 
 interface Props {
   gaps: CashGap[];
@@ -19,9 +20,10 @@ const ACTIONS = [
 
 export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onRequestFactoring }: Props) {
   const [open, setOpen] = useState(false);
-  if (gaps.length === 0) return null;
-
-  const worst = gaps.reduce((a, b) => (b.shortfallKobo > a.shortfallKobo ? b : a), gaps[0]);
+  const [inputCreditOpen, setInputCreditOpen] = useState(false);
+  const worstGap = gaps.length > 0 ? gaps.reduce((a, b) => (b.shortfallKobo > a.shortfallKobo ? b : a), gaps[0]) : null;
+  if (!worstGap) return null;
+  const worst = worstGap;
 
   const handlers: Record<string, (() => void) | undefined> = {
     deferral: onRequestDeferral,
@@ -81,7 +83,7 @@ export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onReques
               {ACTIONS.map(({ Icon, label, sub, key }) => (
                 <button
                   key={key}
-                  onClick={() => { setOpen(false); handlers[key]?.(); }}
+                  onClick={() => { setOpen(false); if (key === 'deferral') { setInputCreditOpen(true); } else { handlers[key]?.(); } }}
                   className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-all group"
                   style={{
                     background: 'hsl(var(--background))',
@@ -100,6 +102,12 @@ export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onReques
           </div>
         </div>
       )}
+      <InputCreditDialog
+        open={inputCreditOpen}
+        onClose={() => setInputCreditOpen(false)}
+        prefillAmountKobo={worstGap?.shortfallKobo}
+        prefillEndDate={worstGap?.endDate}
+      />
     </>
   );
 }
