@@ -33,15 +33,12 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
     const TUNDE_FARMER_ID = await getTundeFarmerId();
 
     // Wipe existing state
-    await prisma.cashGap.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
-    await prisma.forecastEvent.deleteMany({ where: { forecast: { farmerId: TUNDE_FARMER_ID } } });
-    await prisma.forecast.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
-    await prisma.liberationLog.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
-    await prisma.factoringAdvance.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
-    await prisma.inputDeferral.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
-    await prisma.transaction.deleteMany({
-      where: { virtualAccount: { farmerId: TUNDE_FARMER_ID } },
-    });
+    await prisma.matchFeedback.deleteMany({});
+    await prisma.wageTransfer.deleteMany({});
+    await prisma.rating.deleteMany({});
+    await prisma.gig.deleteMany({});
+    await prisma.job.deleteMany({});
+    await prisma.labourer.deleteMany({});
 
     // Ensure accounts exist (may have been wiped by DB reset)
     const existingAccounts = await prisma.virtualAccount.findMany({
