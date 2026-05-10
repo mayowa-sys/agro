@@ -4,6 +4,7 @@ import axios from 'axios';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/errors';
 import { runForecast } from '../services/forecast.service';
+import { wagesQueue } from '../lib/queues';
 
 export const demoRouter = Router();
 
@@ -328,6 +329,29 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
       },
     });
 
+    // 3b. Create a pre-accepted gig for demo wage flow (no live login switching needed)
+    const acceptedJob = await prisma.job.create({
+      data: {
+        farmerId: TUNDE_FARMER_ID,
+        title: 'Weeding help (pre-accepted for demo)',
+        skillsRequired: ['weeding'],
+        expectedDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        durationDays: 1,
+        payAmountKobo: 1500000n,
+        workersNeeded: 1,
+        status: 'FILLED',
+      },
+    });
+
+    await prisma.gig.create({
+      data: {
+        jobId: acceptedJob.id,
+        labourerId: adamu.id,
+        agreedAmountKobo: 1500000n,
+        status: 'ACCEPTED',
+      },
+    });
+
     // 4. Pre-compute embeddings synchronously
     try {
       const aiToken = process.env.AI_SERVICE_TOKEN || '919df173af79fdb0a783fdca12fdaf6fb3d3906c4fca7709cdae8f31287e94f8';
@@ -430,5 +454,35 @@ demoRouter.post('/trigger-stress', async (req: Request, res: Response, next) => 
     const { scenario } = req.body;
     if (!scenario) return next(new AppError(400, 'scenario is required'));
     res.json({ ok: true, message: `Stress scenario '${scenario}' triggered — use /forecasts/me/stress-test to retrieve` });
+  } catch (err) { next(err); }
+});
+
+// POST /demo/simulate-wage-completion
+demoRouter.post('/simulate-wage-completion', async (req: Request, res: Response, next) => {
+  if (!checkDemoAuth(req, res)) return;
+  try {
+    const adamu = await prisma.labourer.findFirst({
+      where: { user: { phone: '08055555555' } },
+    });
+    if (!adamu) throw new AppError(404, 'Demo labourer Adamu not found — run seed-tunde first');
+
+    const gig = await prisma.gig.findFirst({
+      where: { labourerId: adamu.id, status: 'ACCEPTED' },
+      orderBy: { acceptedAt: 'desc' },
+    });
+    if (!gig) throw new AppError(404, 'No ACCEPTED gig found for Adamu');
+
+    await prisma.gig.update({
+      where: { id: gig.id },
+      data: {
+        farmerConfirmedAt: new Date(),
+        labourerConfirmedAt: new Date(),
+        status: 'BOTH_CONFIRMED',
+      },
+    });
+
+    await wagesQueue.add('route-wage', { gigId: gig.id });
+
+    res.json({ ok: true, gigId: gig.id, message: 'Both sides confirmed. Wage routing enqueued.' });
   } catch (err) { next(err); }
 });
