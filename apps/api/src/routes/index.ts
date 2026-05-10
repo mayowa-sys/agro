@@ -11,6 +11,7 @@ import { labourersRouter } from './labourers.routes';
 import { jobsRouter } from './jobs.routes';
 import { gigsRouter } from './gigs.routes';
 import { matchRouter } from './match.routes';
+import wageAdvancesRouter from './wage-advances.routes';
 
 export function registerRoutes(app: Application) {
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
@@ -27,4 +28,5 @@ export function registerRoutes(app: Application) {
   app.use('/jobs', jobsRouter);
   app.use('/gigs', gigsRouter);
   app.use('/match', matchRouter);
+  app.use('/wage-advances', wageAdvancesRouter);
 }

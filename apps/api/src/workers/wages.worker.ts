@@ -70,8 +70,30 @@ export const wagesWorker = new Worker(
             });
             console.error(`[WAGES WORKER] wageTransfer created: ${wageTransfer.id}`);
 
-            // 4. Squad transfer
-            const amountNaira = Number(gig.agreedAmountKobo) / 100;
+            // 4. Deduct outstanding wage advance if any
+            let payableKobo = BigInt(gig.agreedAmountKobo);
+            const outstandingAdvance = await prisma.wageAdvance.findFirst({
+                where: { labourerId: gig.labourerId, status: 'APPROVED' },
+            });
+            if (outstandingAdvance) {
+                const deductKobo = outstandingAdvance.approvedKobo - outstandingAdvance.repaidKobo;
+                const actualDeduct = deductKobo > payableKobo ? payableKobo : deductKobo;
+                payableKobo = payableKobo - actualDeduct;
+                const newRepaid = outstandingAdvance.repaidKobo + actualDeduct;
+                const fullyRepaid = newRepaid >= outstandingAdvance.approvedKobo;
+                await prisma.wageAdvance.update({
+                    where: { id: outstandingAdvance.id },
+                    data: {
+                        repaidKobo: newRepaid,
+                        status: fullyRepaid ? 'REPAID' : 'APPROVED',
+                        fullyRepaidAt: fullyRepaid ? new Date() : null,
+                    },
+                });
+                console.error(`[WAGES WORKER] advance deduction: ${actualDeduct} kobo, remaining payable: ${payableKobo}`);
+            }
+
+            // 5. Squad transfer
+            const amountNaira = Number(payableKobo) / 100;
             console.error(`[WAGES WORKER] initiating transfer: ${amountNaira} NGN`);
             const transferResult = await squadClient.initiateTransfer({
                 amount: amountNaira,

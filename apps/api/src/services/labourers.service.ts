@@ -68,6 +68,7 @@ export async function updateLabourer(userId: string, data: {
   longitude?: number;
   skills?: string[];
   spokenLanguages?: string[];
+  language?: string;   // <-- ADD THIS
 }) {
   const labourer = await prisma.labourer.findUnique({ where: { userId } });
   if (!labourer) throw new AppError(404, 'Labourer profile not found');
@@ -92,6 +93,14 @@ export async function updateLabourer(userId: string, data: {
     skills: updated.skills,
     spokenLanguages: updated.spokenLanguages,
   }).catch(err => logger.warn('Embedding refresh failed (non-fatal):', err));
+
+  // If language is provided, update the User record
+  if (data.language) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { language: data.language as any },
+    });
+  }
 
   return updated;
 }
@@ -176,7 +185,7 @@ export async function getLabourerDashboard(userId: string) {
     },
     savingsAccount: {
       id: savingsAccount.id,
-      balanceKobo: savingsAccount.balanceKobo.toString(),
+      balanceKobo: savingsAccount.cachedBalance.toString(),
       squadAccountNumber: savingsAccount.squadAccountNumber,
     },
     upcomingGigs,

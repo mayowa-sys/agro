@@ -42,3 +42,10 @@ export const useLabourerConfirmDone = () => {
     },
   })
 }
+
+export function useWageAdvances() {
+  return useQuery({
+    queryKey: ['wage-advances'],
+    queryFn: () => api.get('/wage-advances/me').then(r => r.data),
+  })
+}

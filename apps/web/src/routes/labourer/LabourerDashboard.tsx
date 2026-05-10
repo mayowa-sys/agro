@@ -7,6 +7,10 @@ import {
   useLabourerDashboard, useLabourerGigs,
   useAcceptJob, useLabourerConfirmDone,
 } from '@/hooks/useLabourer'
+import { useLanguage } from '@/hooks/useLanguage'
+import { useWageAdvances } from '@/hooks/useLabourer';
+import { WageAdvanceBanner } from '@/components/labourer/WageAdvanceBanner'
+import { LABOURER_STRINGS } from '@/i18n/labourer';
 
 const CLAY = '#a0522d'
 const CLAY_DEEP = '#7a3d20'
@@ -221,9 +225,11 @@ export default function LabourerDashboard() {
   const { data: gigsData } = useLabourerGigs()
   const [confirmGig, setConfirmGig] = useState<any>(null)
   const [acceptJob, setAcceptJob] = useState<any>(null)
+  const { language: lang, setLanguage } = useLanguage();
+  const { data: advanceData } = useWageAdvances()
+  const outstandingAdvance = advanceData?.advances?.find((a: any) => a.status === 'APPROVED')
 
   if (isLoading) return <Skeleton />
-
   const {
     labourer,
     savingsAccount,
@@ -238,6 +244,7 @@ export default function LabourerDashboard() {
   const actionGig = upcomingGigs.find((g: any) => gigNeedsLabourerConfirm(g.status))
   const otherUpcoming = upcomingGigs.filter((g: any) => !gigNeedsLabourerConfirm(g.status))
   const sortedJobs = [...nearbyJobs].sort((a: any, b: any) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+  const canRequestAdvance = (labourer?.reputationTier ?? 0) >= 3 && !outstandingAdvance
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 lg:py-12 space-y-10">
@@ -262,7 +269,7 @@ export default function LabourerDashboard() {
             <div className="mb-3 flex items-center gap-2">
               <Wallet className="h-3.5 w-3.5" style={{ color: CLAY }} />
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: CLAY }}>
-                Your savings pot
+                {LABOURER_STRINGS['dashboard.savingsPot'][lang]}
               </p>
             </div>
             <p className="font-serif text-5xl lg:text-6xl leading-none tracking-tight"
@@ -274,6 +281,24 @@ export default function LabourerDashboard() {
                 Squad acct · {savingsAccount.squadAccountNumber}
               </p>
             )}
+          </div>
+
+          {/* Language toggle */}
+          <div className="flex items-center gap-1.5">
+            {(['EN', 'PIDGIN', 'HAUSA', 'YORUBA', 'IGBO'] as const).map(code => (
+                <button
+                    key={code}
+                    onClick={() => setLanguage(code)}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-all ${
+                        lang === code
+                            ? 'text-white shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground border border-border'
+                    }`}
+                    style={lang === code ? { background: CLAY } : {}}
+                >
+                  {code}
+                </button>
+            ))}
           </div>
 
           {/* Profile compact */}
@@ -293,14 +318,16 @@ export default function LabourerDashboard() {
               style={{ background: '#fff', border: `0.5px solid ${CLAY_BORDER}` }}>
               <Sparkles className="h-3 w-3" style={{ color: CLAY }} />
               <span className="text-xs font-semibold" style={{ color: CLAY_DEEP }}>
-                Tier {labourer?.reputationTier ?? 1} · {tierLabel(labourer?.reputationTier ?? 1)}
+                                 {LABOURER_STRINGS['dashboard.tier'][lang]} {labourer?.reputationTier ?? 1} · {tierLabel(labourer?.reputationTier ?? 1)}
               </span>
             </div>
 
             <div className="mt-5 flex gap-6">
               <div>
                 <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  Gigs
+                  <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    {LABOURER_STRINGS['dashboard.gigsCompleted'][lang]}
+                  </p>
                 </p>
                 <p className="mt-0.5 font-serif text-xl" style={{ color: 'hsl(var(--foreground))' }}>
                   {completedGigsCount}
@@ -308,7 +335,9 @@ export default function LabourerDashboard() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  Total earned
+                  <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    {LABOURER_STRINGS['dashboard.totalEarned'][lang]}
+                  </p>
                 </p>
                 <p className="mt-0.5 font-serif text-xl" style={{ color: 'hsl(var(--foreground))' }}>
                   {formatNaira(totalEarnedKobo)}
@@ -357,17 +386,39 @@ export default function LabourerDashboard() {
               style={{ color: CLAY }}
               onClick={() => setConfirmGig(actionGig)}
             >
-              Confirm done
+              {LABOURER_STRINGS['action.confirmNow'][lang]}
             </button>
           </div>
         </section>
       )}
 
+      {/* ── WAGE ADVANCE CTA ─────────────────────────────────────── */}
+      {canRequestAdvance && (
+        <WageAdvanceBanner labourerId={labourer?.id} onSuccess={() => {}} />
+      )}
+      {outstandingAdvance && (
+        <section
+          className="rounded-2xl p-5"
+          style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+        >
+          <div className="flex items-center gap-3">
+            <Wallet className="h-5 w-5 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
+                Advance outstanding
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                ₦{(Number(outstandingAdvance.approvedKobo) / 100).toLocaleString()} will be deducted from your next wage
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
       {/* ── NEARBY JOBS ─────────────────────────────────────────── */}
       <section>
         <div className="mb-5 flex items-end justify-between">
           <h2 className="font-serif text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
-            Jobs near you
+            {LABOURER_STRINGS['nearby.title'][lang]}
           </h2>
           <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
             {sortedJobs.length} {sortedJobs.length === 1 ? 'match' : 'matches'}

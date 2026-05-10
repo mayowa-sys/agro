@@ -215,7 +215,7 @@ export async function getFarmerDashboard(userId: string) {
     accounts: accounts.map(a => ({
       id: a.id,
       purpose: a.purpose,
-      balanceKobo: String(a.balanceKobo),
+      balanceKobo: String(a.cachedBalance),
       squadAccountNumber: a.squadAccountNumber,
     })),
     activeDeferrals: activeDeferrals.map(d => ({

@@ -327,6 +327,7 @@ model Labourer {
   gigs            Gig[]
   ratingsReceived Rating[] @relation("LabourerRated")
   ratingsGiven    Rating[] @relation("LabourerRater")
+  wageAdvances    WageAdvance[]
 }
 
 model Job {
@@ -447,4 +448,24 @@ model CreditScore {
   components    Json
   creditLimitKobo BigInt
   computedAt    DateTime @default(now())
+}
+
+model WageAdvance {
+  id              String            @id @default(cuid())
+  labourerId      String
+  labourer        Labourer          @relation(fields: [labourerId], references: [id])
+  requestedKobo   BigInt
+  approvedKobo    BigInt?
+  status          WageAdvanceStatus @default(PENDING)
+  repaidKobo      BigInt            @default(0)
+  createdAt       DateTime          @default(now())
+  approvedAt      DateTime?
+  fullyRepaidAt   DateTime?
+}
+
+enum WageAdvanceStatus {
+  PENDING
+  APPROVED
+  REPAID
+  REJECTED
 }
