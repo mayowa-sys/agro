@@ -36,6 +36,30 @@ router.post('/', requireAuth, requireRole('FARMER'), async (req: AuthRequest, re
       sourceForecastEventId,
     });
 
+    // Inject labour expense into farmer's latest forecast
+    try {
+      const latestForecast = await prisma.forecast.findFirst({
+        where: { farmerId: farmer.id },
+        orderBy: { generatedAt: 'desc' },
+      });
+      if (latestForecast) {
+        await prisma.forecastEvent.create({
+          data: {
+            forecastId: latestForecast.id,
+            expectedDate: new Date(expectedDate),
+            expectedAmount: BigInt(payAmountKobo),
+            type: 'EXPENSE',
+            category: 'LABOUR',
+            confidence: 0.95,
+            reasonsJson: [`Labour spend: ${title}`, 'Job posted by farmer', 'Forecast updated automatically'],
+          },
+        });
+        const { redis } = await import('../lib/redis');
+        await redis.del(`forecast:${farmer.id}`);
+      }
+    } catch (e) {
+      console.warn('[JOBS] Failed to inject forecast event:', e);
+    }
     res.status(201).json(job);
   } catch (err) {
     next(err);
@@ -94,6 +118,27 @@ router.post('/:id/cancel', requireAuth, requireRole('FARMER'), async (req: AuthR
     if (!farmer) throw new AppError(404, 'Farmer profile not found');
 
     const job = await cancelJob(String(req.params.id), farmer.id);
+    // Remove associated forecast event
+    try {
+      const latestForecast = await prisma.forecast.findFirst({
+        where: { farmerId: farmer.id },
+        orderBy: { generatedAt: 'desc' },
+      });
+      if (latestForecast && job.expectedDate) {
+        await prisma.forecastEvent.deleteMany({
+          where: {
+            forecastId: latestForecast.id,
+            category: 'LABOUR',
+            expectedDate: job.expectedDate,
+            expectedAmount: job.payAmountKobo,
+          },
+        });
+        const { redis } = await import('../lib/redis');
+        await redis.del(`forecast:${farmer.id}`);
+      }
+    } catch (e) {
+      console.warn('[JOBS] Failed to remove forecast event on cancel:', e);
+    }
     res.json(job);
   } catch (err) {
     next(err);

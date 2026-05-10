@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { addDays, format, startOfDay, isWithinInterval, parseISO, isSameDay } from 'date-fns';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle , Hammer } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatNaira } from '@/lib/format';
 
@@ -115,6 +115,7 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
               const hasEvents = dayEvents.length > 0;
               const isPositive = net >= 0;
               const hasSignificant = dayEvents.some((e) => Math.abs(e.amount) >= 500_000);
+              const hasLabour = dayEvents.some((e) => e.category === 'LABOUR');
 
               return (
                 <button
@@ -155,6 +156,12 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
                   {isGapStart(day) && (
                       <span className="absolute top-1.5 right-1.5">
                       <AlertTriangle size={9} className="text-orange-500" />
+                    </span>
+                  )}
+                  {/* Labour indicator */}
+                  {hasLabour && !isGapStart(day) && (
+                      <span className="absolute top-1.5 left-1.5">
+                      <Hammer size={9} className="text-muted-foreground" />
                     </span>
                   )}
                 </button>
