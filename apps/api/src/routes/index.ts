@@ -8,6 +8,7 @@ import { factoringRouter } from './factoring.routes';
 import { forecastsRouter } from './forecasts.routes';
 import { demoRouter } from './demo.routes';
 import { labourersRouter } from './labourers.routes';
+import { jobsRouter } from './jobs.routes';
 
 export function registerRoutes(app: Application) {
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
@@ -21,4 +22,5 @@ export function registerRoutes(app: Application) {
   app.use('/forecasts', forecastsRouter);
   app.use('/demo', demoRouter);
   app.use('/labourers', labourersRouter);
+  app.use('/jobs', jobsRouter);
 }
