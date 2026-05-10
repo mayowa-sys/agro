@@ -10,6 +10,7 @@ enum Role {
   FARMER
   AGGREGATOR
   ADMIN
+  LABOURER
 }
 
 enum CropType {
@@ -35,6 +36,7 @@ enum AccountPurpose {
   WORKING
   BILLS
   NEXT_SEASON
+  LABOUR_SAVINGS
 }
 
 enum TransactionType {
@@ -83,6 +85,7 @@ model User {
   updatedAt   DateTime    @updatedAt
   farmer      Farmer?
   aggregator  Aggregator?
+  labourer Labourer?
 }
 
 model Farmer {
@@ -107,6 +110,7 @@ model Farmer {
   factoringAdvances   FactoringAdvance[]
   weeklyBriefs        WeeklyBrief[]
   liberationLogs      LiberationLog[]
+  jobs                Job[]
 }
 
 model Aggregator {
@@ -252,6 +256,7 @@ model LiberationLog {
   factoringAdvance       FactoringAdvance @relation(fields: [factoringAdvanceId], references: [id])
   counterfactualLossKobo BigInt
   loggedAt               DateTime         @default(now())
+  source LiberationSource @default(MIDDLEMAN_DISCOUNT_AVOIDED)
 }
 
 model WeeklyBrief {
@@ -285,4 +290,141 @@ model AuditLog {
   resource   String
   metadata   Json
   occurredAt DateTime @default(now())
+}
+
+enum LiberationSource {
+  MIDDLEMAN_DISCOUNT_AVOIDED
+  CASH_ON_DAY_PREMIUM_CAPTURED
+}
+
+model Labourer {
+  id                        String    @id @default(cuid())
+  userId                    String    @unique
+  user                      User      @relation(fields: [userId], references: [id])
+  fullName                  String
+  region                    String
+  state                     String
+  latitude                  Float?
+  longitude                 Float?
+  skills                    String[]
+  spokenLanguages           String[]
+  reputationTier            Int       @default(1)
+  totalGigsCompleted        Int       @default(0)
+  totalEarnedKobo           BigInt    @default(0)
+  profileEmbedding          String?
+  profileEmbeddingUpdatedAt DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  gigs            Gig[]
+  ratingsReceived Rating[] @relation("LabourerRated")
+  ratingsGiven    Rating[] @relation("LabourerRater")
+}
+
+model Job {
+  id                            String    @id @default(cuid())
+  farmerId                      String
+  farmer                        Farmer    @relation(fields: [farmerId], references: [id])
+  title                         String
+  description                   String?
+  skillsRequired                String[]
+  expectedDate                  DateTime
+  durationDays                  Int       @default(1)
+  payAmountKobo                 BigInt
+  workersNeeded                 Int       @default(1)
+  status                        JobStatus @default(OPEN)
+  sourceForecastEventId         String?
+  descriptionEmbedding          String?
+  descriptionEmbeddingUpdatedAt DateTime?
+  demandConfidence              Float?
+  demandConsistency             Float?
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+
+  gigs Gig[]
+}
+
+enum JobStatus {
+  OPEN
+  FILLED
+  CANCELLED
+  EXPIRED
+}
+
+model Gig {
+  id                  String       @id @default(cuid())
+  jobId               String
+  job                 Job          @relation(fields: [jobId], references: [id])
+  labourerId          String
+  labourer            Labourer     @relation(fields: [labourerId], references: [id])
+  agreedAmountKobo    BigInt
+  status              GigStatus    @default(ACCEPTED)
+  acceptedAt          DateTime     @default(now())
+  farmerConfirmedAt   DateTime?
+  labourerConfirmedAt DateTime?
+  paidAt              DateTime?
+  cancelReason        String?
+  wageTransferId      String?      @unique
+  wageTransfer        WageTransfer? @relation(fields: [wageTransferId], references: [id])
+
+  rating Rating?
+}
+
+enum GigStatus {
+  ACCEPTED
+  FARMER_CONFIRMED_DONE
+  LABOURER_CONFIRMED_DONE
+  BOTH_CONFIRMED
+  PAID
+  CLOSED
+  CANCELLED
+}
+
+model Rating {
+  id                    String    @id @default(cuid())
+  gigId                 String    @unique
+  gig                   Gig       @relation(fields: [gigId], references: [id])
+  farmerScoreOfLabourer Int?
+  farmerComment         String?
+  labourerScoreOfFarmer Int?
+  labourerComment       String?
+  labourerId            String
+  labourer              Labourer  @relation("LabourerRated", fields: [labourerId], references: [id])
+  raterLabourerId       String?
+  raterLabourer         Labourer? @relation("LabourerRater", fields: [raterLabourerId], references: [id])
+  createdAt             DateTime  @default(now())
+}
+
+model WageTransfer {
+  id                   String             @id @default(cuid())
+  gigId                String             @unique
+  fromVirtualAccountId String
+  toVirtualAccountId   String
+  amountKobo           BigInt
+  squadTransferRef     String?
+  status               WageTransferStatus @default(PENDING)
+  errorMessage         String?
+  createdAt            DateTime           @default(now())
+  succeededAt          DateTime?
+
+  gig Gig?
+}
+
+enum WageTransferStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+model MatchFeedback {
+  id             String   @id @default(cuid())
+  jobId          String
+  labourerId     String
+  matchScore     Float
+  wasAccepted    Boolean
+  wasCompleted   Boolean?
+  farmerRating   Int?
+  labourerRating Int?
+  createdAt      DateTime @default(now())
+  resolvedAt     DateTime?
 }
