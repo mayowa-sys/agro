@@ -34,7 +34,7 @@ async function handleWebhookPayload(payload: any) {
         },
       });
 
-      if (va.farmer.inputDeferrals.length > 0) {
+      if (va.farmer && va.farmer.inputDeferrals.length > 0) {
         await deferralsQueue.add('collect-repayment', { transactionId: txn.id, farmerId: va.farmerId, amount: txn.amount.toString() });
       } else {
         await splitsQueue.add('route', {

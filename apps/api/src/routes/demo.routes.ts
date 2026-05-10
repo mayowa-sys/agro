@@ -17,12 +17,19 @@ function checkDemoAuth(req: Request, res: Response): boolean {
   return true;
 }
 
+async function getTundeFarmerId(): Promise<string> {
+  const tunde = await prisma.farmer.findFirst({
+    where: { user: { phone: '08012345678' } },
+  });
+  if (!tunde) throw new AppError(500, 'Demo farmer Tunde not found — run seed first');
+  return tunde.id;
+}
+
 // POST /demo/seed-tunde
-// Wipes Tunde's state and re-seeds fresh transaction history
 demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
   if (!checkDemoAuth(req, res)) return;
   try {
-    const TUNDE_FARMER_ID = 'cmoxgcurl0009j6vi8rxt9q7x';
+    const TUNDE_FARMER_ID = await getTundeFarmerId();
 
     // Wipe existing state
     await prisma.cashGap.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
@@ -89,8 +96,8 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
         data: {
           farmerId: TUNDE_FARMER_ID,
           supplierId: supplier.id,
-          amount: 4000000n,  // ₦40,000
-          agroFee: 80000n,   // ₦800 (2%)
+          amount: 4000000n,
+          agroFee: 80000n,
           status: 'ACTIVE',
           squadMandateId: 'mock-mandate-demo-seed',
           disbursedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -106,8 +113,8 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
         data: {
           aggregatorId: aggregator.id,
           farmerId: TUNDE_FARMER_ID,
-          amount: 18000000n,  // ₦180,000
-          fee: 540000n,       // ₦5,400 (3%)
+          amount: 18000000n,
+          fee: 540000n,
           status: 'ADVANCED',
           advancedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
           expectedRepayBy: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -117,12 +124,12 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
         data: {
           farmerId: TUNDE_FARMER_ID,
           factoringAdvanceId: factoringAdvance.id,
-          counterfactualLossKobo: 1200000000n, // ₦12,000,000
+          counterfactualLossKobo: 1200000000n,
         },
       });
     }
 
-    // Ensure split rule exists after wipe
+    // Ensure split rule exists
     await prisma.splitRule.upsert({
       where: { farmerId: TUNDE_FARMER_ID },
       update: {},
@@ -142,7 +149,6 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
 });
 
 // POST /demo/simulate-payment
-// Triggers a fake Squad webhook — critical for demo
 demoRouter.post('/simulate-payment', async (req: Request, res: Response, next) => {
   if (!checkDemoAuth(req, res)) return;
   try {
@@ -184,8 +190,6 @@ demoRouter.post('/simulate-payment', async (req: Request, res: Response, next) =
 // POST /demo/time-skip
 demoRouter.post('/time-skip', async (req: Request, res: Response) => {
   if (!checkDemoAuth(req, res)) return;
-  // Time-skip is handled client-side in Season Replay
-  // This endpoint exists as a hook for future server-side date offsetting
   const { days } = req.body;
   res.json({ ok: true, message: `Time-skip of ${days} days acknowledged (client-side only in v1)` });
 });

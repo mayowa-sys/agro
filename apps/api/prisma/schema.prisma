@@ -85,7 +85,8 @@ model User {
   updatedAt   DateTime    @updatedAt
   farmer      Farmer?
   aggregator  Aggregator?
-  labourer Labourer?
+  labourer    Labourer?
+  virtualAccounts VirtualAccount[]
 }
 
 model Farmer {
@@ -126,17 +127,21 @@ model Aggregator {
 
 model VirtualAccount {
   id                 String         @id @default(cuid())
-  farmerId           String
-  farmer             Farmer         @relation(fields: [farmerId], references: [id])
+  farmerId           String?
+  farmer             Farmer?        @relation(fields: [farmerId], references: [id])
+  userId             String?
+  user               User?          @relation(fields: [userId], references: [id])
   squadAccountNumber String         @unique
   squadCustomerId    String
   bankName           String
   purpose            AccountPurpose
   cachedBalance      BigInt         @default(0)
+  balanceKobo        BigInt         @default(0)
   createdAt          DateTime       @default(now())
   transactions       Transaction[]
 
   @@index([farmerId, purpose])
+  @@index([userId, purpose])
 }
 
 model SplitRule {

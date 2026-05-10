@@ -92,3 +92,38 @@ export async function refreshAccountBalance(virtualAccountId: string, farmerId: 
 
   return updated;
 }
+
+export async function createLabourSavingsAccountForUser(userId: string) {
+  // Check if LABOUR_SAVINGS VA already exists for this user
+  const existing = await prisma.virtualAccount.findFirst({
+    where: { userId, purpose: 'LABOUR_SAVINGS' },
+  });
+  if (existing) return existing;
+
+  // Get the labourer profile for names
+  const labourer = await prisma.labourer.findUniqueOrThrow({
+    where: { userId },
+    include: { user: true },
+  });
+
+  const nameParts = labourer.fullName.split(' ');
+  const squadVA = await squadClient.createVirtualAccount({
+    customer_identifier: `${userId}-labour-savings`,
+    first_name: nameParts[0],
+    last_name: nameParts[1] ?? nameParts[0],
+    mobile_num: labourer.user.phone,
+    dob: '1990-01-01',
+  });
+
+  const va = await prisma.virtualAccount.create({
+    data: {
+      userId,
+      squadAccountNumber: squadVA.account_number,
+      squadCustomerId: squadVA.customer_id,
+      bankName: squadVA.bank ?? 'GTBank',
+      purpose: 'LABOUR_SAVINGS',
+    },
+  });
+
+  return va;
+}
