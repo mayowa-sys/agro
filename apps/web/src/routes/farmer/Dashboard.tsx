@@ -4,6 +4,7 @@ import {
   Wallet, ArrowRight, ChevronRight, Sparkles, AlertTriangle, Briefcase,
 } from 'lucide-react'
 import { useFarmerDashboard } from '@/hooks/useFarmerDashboard'
+import CreditScoreWidget from '@/components/farmer/CreditScoreWidget'
 
 const LEAF = 'hsl(142 71% 35%)'
 const LEAF_DEEP = 'hsl(142 71% 25%)'
@@ -352,6 +353,9 @@ export default function Dashboard() {
                   style={{ color: 'hsl(var(--muted-foreground))' }} />
               </button>
             ))}
+          </div>
+          <div className="mt-6">
+            <CreditScoreWidget />
           </div>
         </div>
       </section>

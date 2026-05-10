@@ -113,6 +113,7 @@ model Farmer {
   weeklyBriefs        WeeklyBrief[]
   liberationLogs      LiberationLog[]
   jobs                Job[]
+  creditScore       CreditScore?
 }
 
 model Aggregator {
@@ -435,4 +436,15 @@ model MatchFeedback {
   labourerRating Int?
   createdAt      DateTime @default(now())
   resolvedAt     DateTime?
+}
+
+model CreditScore {
+  id            String   @id @default(cuid())
+  farmerId      String   @unique
+  farmer        Farmer   @relation(fields: [farmerId], references: [id])
+  score         Int      // 300-850
+  tier          Int      // 1-5
+  components    Json
+  creditLimitKobo BigInt
+  computedAt    DateTime @default(now())
 }

@@ -294,6 +294,27 @@ export function Login() {
                 <span className="text-muted-foreground">→</span>
                 <span>Sign in as demo labourer</span>
               </button>
+              <button
+                  onClick={async () => {
+                    setError(null);
+                    setLoading(true);
+                    try {
+                      const { data } = await api.post('/auth/demo-login', { phone: '08099999999' });
+                      login(data.token, data.user);
+                      nav('/app/portal/dashboard');
+                    } catch (err: any) {
+                      setError(err.response?.data?.error ?? 'Demo login failed');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full border border-border bg-card hover:bg-accent py-3 rounded-lg text-sm font-medium font-sans text-foreground transition-all disabled:opacity-40 flex items-center justify-center gap-2.5"
+              >
+                <span className="font-display italic" style={{ color: 'hsl(217 91% 60%)' }}>Agbo Foods</span>
+                <span className="text-muted-foreground">→</span>
+                <span>Sign in as demo aggregator</span>
+              </button>
             </>
           )}
         </div>

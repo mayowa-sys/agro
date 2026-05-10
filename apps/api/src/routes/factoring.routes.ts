@@ -169,3 +169,52 @@ factoringRouter.get('/recent', requireAuth, async (_req, res, next) => {
     next(err);
   }
 });
+
+// GET /aggregator/me/dashboard — aggregator home
+factoringRouter.get('/me/dashboard', requireAuth, requireRole('AGGREGATOR'), async (req: AuthRequest, res, next) => {
+  try {
+    const aggregator = await prisma.aggregator.findUnique({ where: { userId: req.user!.id } });
+    if (!aggregator) return next(new AppError(404, 'Aggregator not found'));
+
+    const thirtyDays = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const advances = await prisma.factoringAdvance.findMany({
+      where: { aggregatorId: aggregator.id },
+      include: { farmer: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const uniqueFarmerIds = new Set(advances.map(a => a.farmerId));
+    const farmerCount = uniqueFarmerIds.size;
+
+    const recentLiberation = await prisma.liberationLog.findMany({
+      where: {
+        source: 'MIDDLEMAN_DISCOUNT_AVOIDED',
+        loggedAt: { gte: thirtyDays },
+      },
+    });
+
+    const totalVolumeLastMonth = advances
+        .filter(a => new Date(a.createdAt) >= thirtyDays)
+        .reduce((sum, a) => sum + a.amount, 0n);
+
+    const liberationContributed = recentLiberation.reduce((sum, l) => sum + l.counterfactualLossKobo, 0n);
+
+    res.json({
+      businessName: aggregator.businessName,
+      activeAdvances: advances.filter(a => a.status === 'ADVANCED').length,
+      totalAdvances: advances.length,
+      farmerCount,
+      totalVolumeLastMonth: String(totalVolumeLastMonth),
+      liberationContributed: String(liberationContributed),
+      recentAdvances: advances.slice(0, 5).map(a => ({
+        id: a.id,
+        farmerName: a.farmer.name,
+        amount: String(a.amount),
+        fee: String(a.fee),
+        status: a.status,
+        createdAt: a.createdAt,
+      })),
+    });
+  } catch (err) { next(err); }
+});

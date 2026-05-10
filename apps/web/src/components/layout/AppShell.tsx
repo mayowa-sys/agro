@@ -16,11 +16,17 @@ const labourerLinks = [
   { to: '/app/labourer/dashboard', label: 'Dashboard', icon: Hammer },
 ];
 
+const aggregatorLinks = [
+  { to: '/app/portal/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
+];
+
 export function AppShell() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
 
-  const links = user?.role === 'LABOURER' ? labourerLinks : farmerLinks;
+  const links = user?.role === 'LABOURER' ? labourerLinks
+      : user?.role === 'AGGREGATOR' ? aggregatorLinks
+          : farmerLinks;
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">

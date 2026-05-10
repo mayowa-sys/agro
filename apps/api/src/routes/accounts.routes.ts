@@ -67,3 +67,26 @@ accountsRouter.get('/dashboard', async (req: AuthRequest, res, next) => {
     res.json(dashboard);
   } catch (err) { next(err); }
 });
+
+// GET /accounts/credit-score — farmer credit score
+accountsRouter.get('/credit-score', async (req: AuthRequest, res, next) => {
+  try {
+    const { prisma } = await import('../lib/prisma');
+    const farmer = await prisma.farmer.findUnique({ where: { userId: req.user!.id } });
+    if (!farmer) return next(new AppError(404, 'Farmer not found'));
+
+    let cs = await prisma.creditScore.findUnique({ where: { farmerId: farmer.id } });
+    if (!cs) {
+      const { recomputeCreditScore } = await import('../services/credit-score.service');
+      cs = await recomputeCreditScore(farmer.id);
+    }
+
+    res.json({
+      score: cs.score,
+      tier: cs.tier,
+      components: cs.components,
+      creditLimitKobo: String(cs.creditLimitKobo),
+      computedAt: cs.computedAt,
+    });
+  } catch (err) { next(err); }
+});

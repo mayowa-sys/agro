@@ -2,6 +2,7 @@ import { Worker, Job } from 'bullmq';
 import { redis, bullRedis } from '../lib/redis';
 import { prisma } from '../lib/prisma';
 import { squadClient } from '../squad/squad.client';
+import { recomputeCreditScore } from '../services/credit-score.service';
 
 interface SplitJobData {
   transactionId: string;
@@ -55,6 +56,9 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
         where: { id: credit.id },
         data: { status: 'REPAID', repaidAt: new Date() },
       });
+
+      // Trigger credit score recompute (fire-and-forget)
+      recomputeCreditScore(farmerId).catch(err => console.warn('Credit score recompute failed:', err));
 
       await prisma.liberationLog.create({
         data: {

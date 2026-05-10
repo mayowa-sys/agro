@@ -12,6 +12,7 @@ import Deferrals from '@/routes/farmer/Deferrals';
 import Jobs from '@/routes/farmer/Jobs';
 import Onboard from '@/routes/labourer/Onboard';
 import LabourerDashboard from '@/routes/labourer/LabourerDashboard';
+import AggregatorDashboard from '@/routes/aggregator/Dashboard';
 
 export function App() {
   const hydrate = useAuth((s) => s.hydrate);
@@ -38,6 +39,11 @@ export function App() {
                 <Route path="/app" element={<AppShell />}>
                     <Route path="labourer/onboard" element={<Onboard />} />
                     <Route path="labourer/dashboard" element={<LabourerDashboard />} />
+                </Route>
+            </Route>
+            <Route element={<RequireRole role="AGGREGATOR" />}>
+                <Route element={<AppShell />}>
+                    <Route path="/app/portal/dashboard" element={<AggregatorDashboard />} />
                 </Route>
             </Route>
         </Route>

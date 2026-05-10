@@ -113,6 +113,10 @@ deferralsRouter.post('/:id/approve', requireAuth, async (req: AuthRequest, res, 
       },
     });
 
+    // 4. Trigger credit score recompute (fire-and-forget)
+    const { recomputeCreditScore } = await import('../services/credit-score.service');
+    recomputeCreditScore(deferral.farmerId).catch(err => console.warn('Credit score recompute failed:', err));
+
     res.json(updated);
   } catch (err) { next(err); }
 });
