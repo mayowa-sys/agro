@@ -100,7 +100,7 @@ deferralsRouter.post('/:id/approve', requireAuth, async (req: AuthRequest, res, 
     // 3. Write LiberationLog with methodology
     const formula = [
       `₦${Number(deferral.amount / 100n)} disbursed to supplier.`,
-      `Counterfactual middleman discount estimated at 30% based on Babban Gona field observations and CGAP smallholder reports.`,
+      `Middleman discount avoided estimated at 30%. Based on peer-reviewed Nigerian value-chain studies: Mahmud et al. (2024, soybean, Kwara, 33.14%), Agbachom et al. (2024, yam, South-South, 42.1%), Hamidu et al. (2025, yam, Gombe, 28.28%). See /methodology for full references.,`,
       `Expected repayment ₦${Number(totalRepay / 100n)} (principal + ${feePct}% AGRO fee).`,
     ].join(' ');
 

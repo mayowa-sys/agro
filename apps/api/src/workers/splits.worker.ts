@@ -65,7 +65,7 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
           farmerId,
           source: 'MIDDLEMAN_DISCOUNT_AVOIDED',
           counterfactualLossKobo: credit.amount,
-          methodologyNote: `Credit ${credit.id} repaid: principal ₦${Number(credit.amount / 100n)} + ₦${Number(feeKobo / 100n)} AGRO fee.`,
+          methodologyNote: `Credit ${credit.id} auto-repaid from harvest inflow. Principal: ₦${Number(credit.amount / 100n)}. AGRO fee (${feePct}%): ₦${Number(feeKobo / 100n)}. Total recovered: ₦${Number(totalDue / 100n)}. Middleman discount avoided estimated at 30% of harvest inflow. See /methodology for sources.`,
         },
       });
 

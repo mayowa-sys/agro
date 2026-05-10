@@ -112,6 +112,7 @@ export const wagesWorker = new Worker(
                     counterfactualLossKobo: premiumKobo,
                     source: 'CASH_ON_DAY_PREMIUM_CAPTURED',
                     gigId,
+                    methodologyNote: `Cash-on-day premium captured: ₦${Number(gig.agreedAmountKobo / 100n)} wage × 10% = ₦${Number(premiumKobo / 100n)}. AGRO estimates a 10% premium for guaranteed same-day payment vs delayed/informal payment. Based on SBM Intelligence (2021): 40% of 3,416 informal-sector workers surveyed were owed wages, with delays up to 20 months. See /methodology.`,
                 },
             });
 

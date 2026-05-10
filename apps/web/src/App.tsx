@@ -13,6 +13,7 @@ import Jobs from '@/routes/farmer/Jobs';
 import Onboard from '@/routes/labourer/Onboard';
 import LabourerDashboard from '@/routes/labourer/LabourerDashboard';
 import AggregatorDashboard from '@/routes/aggregator/Dashboard';
+import Methodology from '@/routes/public/Methodology';
 
 export function App() {
   const hydrate = useAuth((s) => s.hydrate);
@@ -23,6 +24,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
+          <Route path="/methodology" element={<Methodology />} />
         <Route element={<RequireAuth />}>
           <Route element={<RequireRole role="FARMER" />}>
             <Route path="/app" element={<AppShell />}>
