@@ -163,7 +163,217 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
     // Generate fresh forecast
     await runForecast(TUNDE_FARMER_ID);
 
-    res.json({ ok: true, message: 'Tunde reset and re-seeded successfully' });
+    // --- Seed labourers for v4 demo ---
+
+    // 1. Create/update Adamu user + labourer profile
+    const adamuUser = await prisma.user.upsert({
+      where: { phone: '08055555555' },
+      update: { role: 'LABOURER' },
+      create: { phone: '08055555555', role: 'LABOURER', language: 'EN' },
+    });
+
+    const adamu = await prisma.labourer.upsert({
+      where: { userId: adamuUser.id },
+      update: {
+        fullName: 'Adamu Bello',
+        region: 'Benue',
+        state: 'Benue State',
+        latitude: 7.7325,
+        longitude: 8.5391,
+        skills: ['harvest', 'weeding'],
+        spokenLanguages: ['HAUSA', 'PIDGIN'],
+      },
+      create: {
+        userId: adamuUser.id,
+        fullName: 'Adamu Bello',
+        region: 'Benue',
+        state: 'Benue State',
+        latitude: 7.7325,
+        longitude: 8.5391,
+        skills: ['harvest', 'weeding'],
+        spokenLanguages: ['HAUSA', 'PIDGIN'],
+      },
+    });
+
+    // Ensure Adamu has a LABOUR_SAVINGS VA
+    const adamuVA = await prisma.virtualAccount.findFirst({
+      where: { userId: adamuUser.id, purpose: 'LABOUR_SAVINGS' },
+    });
+    if (!adamuVA) {
+      await prisma.virtualAccount.create({
+        data: {
+          userId: adamuUser.id,
+          squadAccountNumber: `010${Math.floor(Math.random() * 9000000) + 1000000}`,
+          squadCustomerId: `mock-adamu-${Date.now()}`,
+          bankName: 'GTBank',
+          purpose: 'LABOUR_SAVINGS',
+        },
+      });
+    }
+
+    // Seed 8 historic completed gigs for Adamu with 4.4 avg rating → Tier 2
+    const tundeFarmer = await prisma.farmer.findUnique({ where: { id: TUNDE_FARMER_ID } });
+    if (tundeFarmer) {
+      // Create a historical job
+      const pastJob = await prisma.job.create({
+        data: {
+          farmerId: TUNDE_FARMER_ID,
+          title: 'Past yam harvest (historic)',
+          skillsRequired: ['harvest'],
+          expectedDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          durationDays: 2,
+          payAmountKobo: 3500000n,
+          workersNeeded: 1,
+          status: 'FILLED',
+        },
+      });
+
+      // Create 8 historic paid gigs with ratings
+      const ratings = [5, 5, 4, 5, 4, 4, 5, 4]; // avg 4.5 → rounds to 4.4?
+      for (let i = 0; i < 8; i++) {
+        const pastGig = await prisma.gig.create({
+          data: {
+            jobId: pastJob.id,
+            labourerId: adamu.id,
+            agreedAmountKobo: 3500000n,
+            status: 'PAID',
+            acceptedAt: new Date(Date.now() - (30 + i) * 24 * 60 * 60 * 1000),
+            farmerConfirmedAt: new Date(Date.now() - (29 + i) * 24 * 60 * 60 * 1000),
+            labourerConfirmedAt: new Date(Date.now() - (29 + i) * 24 * 60 * 60 * 1000),
+            paidAt: new Date(Date.now() - (28 + i) * 24 * 60 * 60 * 1000),
+          },
+        });
+        await prisma.rating.create({
+          data: {
+            gigId: pastGig.id,
+            labourerId: adamu.id,
+            farmerScoreOfLabourer: ratings[i],
+          },
+        });
+      }
+
+      // Update Adamu's stats
+      await prisma.labourer.update({
+        where: { id: adamu.id },
+        data: {
+          totalGigsCompleted: 8,
+          totalEarnedKobo: 28000000n, // 8 × ₦35,000
+          reputationTier: 2,
+        },
+      });
+    }
+
+    // 2. Create 2 additional labourers (different skills/distances)
+    const extraLabourers = [
+      {
+        phone: '08066666666',
+        name: 'Chidinma Okonkwo',
+        region: 'Enugu',
+        skills: ['planting', 'land-prep'],
+        languages: ['IGBO', 'EN'],
+        lat: 6.5244, lng: 7.5090,
+      },
+      {
+        phone: '08077777777',
+        name: 'Musa Ibrahim',
+        region: 'Kaduna',
+        skills: ['pesticide-application', 'harvest'],
+        languages: ['HAUSA', 'EN'],
+        lat: 10.5105, lng: 7.4165,
+      },
+    ];
+
+    for (const el of extraLabourers) {
+      const user = await prisma.user.upsert({
+        where: { phone: el.phone },
+        update: { role: 'LABOURER' },
+        create: { phone: el.phone, role: 'LABOURER', language: 'EN' },
+      });
+      await prisma.labourer.upsert({
+        where: { userId: user.id },
+        update: {
+          fullName: el.name,
+          region: el.region,
+          state: el.region,
+          latitude: el.lat,
+          longitude: el.lng,
+          skills: el.skills,
+          spokenLanguages: el.languages,
+        },
+        create: {
+          userId: user.id,
+          fullName: el.name,
+          region: el.region,
+          state: el.region,
+          latitude: el.lat,
+          longitude: el.lng,
+          skills: el.skills,
+          spokenLanguages: el.languages,
+        },
+      });
+    }
+
+    // 3. Create 1 OPEN job from Tunde for demo
+    const openJob = await prisma.job.create({
+      data: {
+        farmerId: TUNDE_FARMER_ID,
+        title: 'Cassava harvest help needed',
+        description: 'Looking for 2 labourers to help with cassava harvest. Tools provided.',
+        skillsRequired: ['harvest', 'weeding'],
+        expectedDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        durationDays: 3,
+        payAmountKobo: 3500000n,
+        workersNeeded: 2,
+        status: 'OPEN',
+      },
+    });
+
+    // 4. Pre-compute embeddings synchronously
+    try {
+      const aiToken = process.env.AI_SERVICE_TOKEN || '919df173af79fdb0a783fdca12fdaf6fb3d3906c4fca7709cdae8f31287e94f8';
+      const aiBase = process.env.AI_SERVICE_URL || 'http://localhost:8001';
+
+      // Embed Adamu
+      const adamuEmbRes = await fetch(`${aiBase}/embeddings/labourer`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${aiToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: 'Adamu Bello', region: 'Benue', skills: ['harvest', 'weeding'], spokenLanguages: ['HAUSA', 'PIDGIN'] }),
+      });
+      if (adamuEmbRes.ok) {
+        const adamuEmb = await adamuEmbRes.json();
+        await prisma.labourer.update({
+          where: { id: adamu.id },
+          data: { profileEmbedding: adamuEmb.embedding, profileEmbeddingUpdatedAt: new Date() },
+        });
+      }
+
+      // Embed open job
+      const jobEmbRes = await fetch(`${aiBase}/embeddings/job`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${aiToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Cassava harvest help needed', description: 'Looking for 2 labourers', skillsRequired: ['harvest', 'weeding'], region: 'Benue', durationDays: 3 }),
+      });
+      if (jobEmbRes.ok) {
+        const jobEmb = await jobEmbRes.json();
+        await prisma.job.update({
+          where: { id: openJob.id },
+          data: { descriptionEmbedding: jobEmb.embedding, descriptionEmbeddingUpdatedAt: new Date() },
+        });
+      }
+    } catch (embErr) {
+      console.warn('Embedding pre-compute failed (non-fatal):', embErr);
+    }
+
+    res.json({
+      ok: true,
+      message: 'Tunde + labourers reset and re-seeded successfully',
+      demoIdentities: {
+        farmer: { name: 'Tunde Adeyemi', phone: '08012345678' },
+        labourer: { name: 'Adamu Bello', phone: '08055555555' },
+        aggregator: { name: 'Agbo Foods', phone: '08099999999' },
+      },
+    });
+
   } catch (err) { next(err); }
 });
 

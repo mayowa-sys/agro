@@ -49,21 +49,57 @@ authRouter.post('/demo-login', async (req, res, next) => {
     return next(new AppError(403, 'Demo login not available'));
   }
   try {
-    const { farmerId, phone } = req.body;
-    let farmer;
+    const { farmerId, labourerPhone, phone } = req.body;
+    const lookupPhone = phone || labourerPhone;
+
     if (farmerId) {
-      farmer = await prisma.farmer.findUnique({ where: { id: farmerId }, include: { user: true } });
-    } else if (phone) {
-      farmer = await prisma.farmer.findFirst({ where: { user: { phone } }, include: { user: true } });
-    } else {
-      return next(new AppError(400, 'farmerId or phone required'));
+      const farmer = await prisma.farmer.findUnique({ where: { id: farmerId }, include: { user: true } });
+      if (!farmer) return next(new AppError(404, 'Demo farmer not found'));
+      const token = jwt.sign(
+          { id: farmer.userId, role: 'FARMER', language: farmer.user.language },
+          process.env.JWT_SECRET!,
+          { expiresIn: '1d' } as SignOptions
+      );
+      return res.json({ token, user: { id: farmer.userId, phone: farmer.user.phone, role: 'FARMER' } });
     }
-    if (!farmer) return next(new AppError(404, 'Demo farmer not found'));
-    const token = jwt.sign(
-        { id: farmer.userId, role: 'FARMER', language: farmer.user.language },
-        process.env.JWT_SECRET!,
-        { expiresIn: '1d' } as SignOptions
-    );
-    res.json({ token, user: { id: farmer.userId, phone: farmer.user.phone, role: 'FARMER' } });
+
+    if (lookupPhone) {
+      // Try farmer first
+      const farmer = await prisma.farmer.findFirst({ where: { user: { phone: lookupPhone } }, include: { user: true } });
+      if (farmer) {
+        const token = jwt.sign(
+            { id: farmer.userId, role: 'FARMER', language: farmer.user.language },
+            process.env.JWT_SECRET!,
+            { expiresIn: '1d' } as SignOptions
+        );
+        return res.json({ token, user: { id: farmer.userId, phone: farmer.user.phone, role: 'FARMER' } });
+      }
+
+      // Try labourer
+      const labourer = await prisma.labourer.findFirst({ where: { user: { phone: lookupPhone } }, include: { user: true } });
+      if (labourer) {
+        const token = jwt.sign(
+            { id: labourer.userId, role: 'LABOURER', language: labourer.user.language },
+            process.env.JWT_SECRET!,
+            { expiresIn: '1d' } as SignOptions
+        );
+        return res.json({ token, user: { id: labourer.userId, phone: labourer.user.phone, role: 'LABOURER' } });
+      }
+
+      // Try aggregator
+      const agg = await prisma.aggregator.findFirst({ where: { user: { phone: lookupPhone } }, include: { user: true } });
+      if (agg) {
+        const token = jwt.sign(
+            { id: agg.userId, role: 'AGGREGATOR', language: agg.user.language },
+            process.env.JWT_SECRET!,
+            { expiresIn: '1d' } as SignOptions
+        );
+        return res.json({ token, user: { id: agg.userId, phone: agg.user.phone, role: 'AGGREGATOR' } });
+      }
+
+      return next(new AppError(404, 'Demo user not found'));
+    }
+
+    return next(new AppError(400, 'farmerId or phone required'));
   } catch (err) { next(err); }
 });

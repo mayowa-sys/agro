@@ -78,8 +78,14 @@ All §1.1–1.11 complete — repo, monorepo, env, docker, shared types, externa
 ## Phase 8: Frontend — Deferrals page
 *(not started)*
 
-## Phase 9: Frontend — Stress Test Console
-*(merged into §6.2 — already complete)*
+§9.1 ✅ Schema + shared types
+§9.2 ✅ Labourer backend (routes + service)
+§9.3 ✅ Labourer Squad VA provisioning
+§9.4 ✅ Jobs backend (CRUD + accept/cancel)
+§9.5 ✅ Gigs + wage routing (BullMQ worker verified: 4/4 completed)
+§9.6 ✅ Liberation source breakdown (byMiddlemanDiscount + byCashOnDayPremium)
+§9.7 ✅ Reputation tier derivation (Tier 1→2 verified at 5 gigs/4.67 avg)
+§9.8 ✅ AI matching (sentence-transformers, demand signals, cosine ranking)
 
 ## Phase 10: Frontend — Season Replay
 *(not started)*
