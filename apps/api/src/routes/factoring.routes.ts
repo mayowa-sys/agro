@@ -101,36 +101,70 @@ factoringRouter.post('/factoring/:id/confirm-repayment', requireAuth, requireRol
   } catch (err) { next(err); }
 });
 
-// GET /liberation/total
+// GET /liberation/total — extended with source breakdown
 factoringRouter.get('/total', requireAuth, async (_req, res, next) => {
   try {
-    const [allTime, logs] = await Promise.all([
-      prisma.liberationLog.aggregate({ _sum: { counterfactualLossKobo: true } }),
-      prisma.liberationLog.findMany({ orderBy: { loggedAt: 'desc' }, take: 100 }),
+    const now = new Date();
+    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [weekLogs, monthLogs, allLogs] = await Promise.all([
+      prisma.liberationLog.findMany({ where: { loggedAt: { gte: weekStart } } }),
+      prisma.liberationLog.findMany({ where: { loggedAt: { gte: monthStart } } }),
+      prisma.liberationLog.findMany(),
     ]);
 
-    // Group by week
-    const byWeek: Record<string, bigint> = {};
-    for (const log of logs) {
-      const week = log.loggedAt.toISOString().slice(0, 10);
-      byWeek[week] = (byWeek[week] ?? 0n) + log.counterfactualLossKobo;
+    function breakdown(logs: typeof weekLogs) {
+      let total = 0n;
+      let byMiddlemanDiscount = 0n;
+      let byCashOnDayPremium = 0n;
+      for (const log of logs) {
+        total += log.counterfactualLossKobo;
+        if (log.source === 'MIDDLEMAN_DISCOUNT_AVOIDED') {
+          byMiddlemanDiscount += log.counterfactualLossKobo;
+        } else if (log.source === 'CASH_ON_DAY_PREMIUM_CAPTURED') {
+          byCashOnDayPremium += log.counterfactualLossKobo;
+        }
+      }
+      return {
+        total: String(total),
+        byMiddlemanDiscount: String(byMiddlemanDiscount),
+        byCashOnDayPremium: String(byCashOnDayPremium),
+      };
     }
 
     res.json({
-      allTime: String(allTime._sum.counterfactualLossKobo ?? 0),
-      byWeek: Object.fromEntries(Object.entries(byWeek).map(([k, v]) => [k, String(v)])),
+      week: breakdown(weekLogs),
+      month: breakdown(monthLogs),
+      allTime: breakdown(allLogs),
     });
   } catch (err) { next(err); }
 });
 
-// GET /liberation/recent
+// GET /liberation/recent — extended with source and labour gig info
 factoringRouter.get('/recent', requireAuth, async (_req, res, next) => {
   try {
     const logs = await prisma.liberationLog.findMany({
-      include: { farmer: true, factoringAdvance: true },
+      include: {
+        farmer: {
+          select: { id: true, name: true }
+        },
+      },
       orderBy: { loggedAt: 'desc' },
       take: 20,
     });
-    res.json(logs);
-  } catch (err) { next(err); }
+
+    res.json(
+        logs.map(log => ({
+          id: log.id,
+          farmerId: log.farmerId,
+          farmerName: log.farmer.name,
+          counterfactualLossKobo: String(log.counterfactualLossKobo),
+          source: log.source,
+          loggedAt: log.loggedAt.toISOString(),
+        }))
+    );
+  } catch (err) {
+    next(err);
+  }
 });
