@@ -679,7 +679,7 @@ export default function Deferrals() {
               }}
             >
               <p className="text-sm text-muted-foreground">
-                No deferrals yet. Request inputs from a partner supplier above.
+                No input credit yet. Request inputs from a partner supplier above.
               </p>
             </div>
           ) : (

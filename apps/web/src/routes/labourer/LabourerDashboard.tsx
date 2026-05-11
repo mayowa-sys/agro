@@ -327,9 +327,9 @@ export default function LabourerDashboard() {
             <div className="mt-5 flex gap-6">
               <div>
                 <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <span className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {LABOURER_STRINGS['dashboard.gigsCompleted'][lang]}
-                  </p>
+                  </span>
                 </p>
                 <p className="mt-0.5 font-serif text-xl" style={{ color: 'hsl(var(--foreground))' }}>
                   {completedGigsCount}
@@ -337,9 +337,9 @@ export default function LabourerDashboard() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  <p className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <span className="text-[11px] uppercase tracking-wider" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     {LABOURER_STRINGS['dashboard.totalEarned'][lang]}
-                  </p>
+                  </span>
                 </p>
                 <p className="mt-0.5 font-serif text-xl" style={{ color: 'hsl(var(--foreground))' }}>
                   {formatNaira(totalEarnedKobo)}
@@ -580,9 +580,9 @@ export default function LabourerDashboard() {
                     <div className="mt-1 flex gap-0.5">
                       {[1, 2, 3, 4, 5].map(n => (
                         <Star key={n} className="h-3 w-3"
-                          fill={n <= gig.rating.score ? 'hsl(43 96% 56%)' : 'transparent'}
+                              fill={n <= (gig.rating.farmerScoreOfLabourer ?? 0) ? 'hsl(43 96% 56%)' : 'transparent'}
                           style={{
-                            color: n <= gig.rating.score ? 'hsl(43 96% 56%)' : 'hsl(var(--muted-foreground) / 0.4)',
+                            color: n <= (gig.rating.farmerScoreOfLabourer ?? 0) ? 'hsl(43 96% 56%)' : 'hsl(var(--muted-foreground) / 0.4)',
                           }} />
                       ))}
                     </div>

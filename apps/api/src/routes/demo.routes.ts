@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import axios from 'axios';
+import { redis } from '../lib/redis';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../lib/errors';
 import { runForecast } from '../services/forecast.service';
@@ -33,6 +34,10 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
     const TUNDE_FARMER_ID = await getTundeFarmerId();
 
     // Wipe existing state
+    await prisma.wageAdvance.deleteMany({});
+    await prisma.inputDeferral.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
+    await prisma.factoringAdvance.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
+    await prisma.liberationLog.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
     await prisma.matchFeedback.deleteMany({});
     await prisma.wageTransfer.deleteMany({});
     await prisma.rating.deleteMany({});
@@ -123,6 +128,22 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
       });
     }
 
+    if (supplier) {
+      const now = new Date();
+      await prisma.inputDeferral.create({
+        data: {
+          farmerId: TUNDE_FARMER_ID,
+          supplierId: supplier.id,
+          amount: 5000000n,
+          agroFee: 100000n,
+          status: 'REPAID',
+          disbursedAt: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+          expectedRepayBy: new Date(now.getTime() - 40 * 24 * 60 * 60 * 1000),
+          repaidAt: new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+
     // Seed a LiberationLog baseline (~₦12M counterfactual)
     const aggregator = await prisma.aggregator.findFirst();
     if (aggregator) {
@@ -137,19 +158,12 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
           expectedRepayBy: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
-      await prisma.liberationLog.create({
-        data: {
-          farmerId: TUNDE_FARMER_ID,
-          factoringAdvanceId: factoringAdvance.id,
-          counterfactualLossKobo: 1200000000n,
-        },
-      });
     }
 
     // Ensure split rule exists
     await prisma.splitRule.upsert({
       where: { farmerId: TUNDE_FARMER_ID },
-      update: {},
+      update: { workingPct: 55, billsPct: 25, nextSeasonPct: 20 },
       create: {
         farmerId: TUNDE_FARMER_ID,
         workingPct: 55,
@@ -158,7 +172,11 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
       },
     });
 
-    // Generate fresh forecast
+    // Generate fresh forecast (delete old ones + clear Redis cache so it regenerates)
+    await prisma.cashGap.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
+    await prisma.forecastEvent.deleteMany({ where: { forecast: { farmerId: TUNDE_FARMER_ID } } });
+    await prisma.forecast.deleteMany({ where: { farmerId: TUNDE_FARMER_ID } });
+    await redis.del(`forecast:${TUNDE_FARMER_ID}`);
     await runForecast(TUNDE_FARMER_ID);
 
     // --- Seed labourers for v4 demo ---
@@ -207,6 +225,11 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
           purpose: 'LABOUR_SAVINGS',
         },
       });
+    } else {
+      await prisma.virtualAccount.update({
+        where: { id: adamuVA.id },
+        data: { cachedBalance: 0n },
+      });
     }
 
     // Seed 8 historic completed gigs for Adamu with 4.4 avg rating → Tier 2
@@ -227,8 +250,8 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
       });
 
       // Create 8 historic paid gigs with ratings
-      const ratings = [5, 5, 4, 5, 4, 4, 5, 4]; // avg 4.5 → rounds to 4.4?
-      for (let i = 0; i < 8; i++) {
+      const ratings = [5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]; // 14 gigs, avg 4.07 → rounds down to 4.0
+      for (let i = 0; i < 14; i++) {
         const pastGig = await prisma.gig.create({
           data: {
             jobId: pastJob.id,
@@ -249,13 +272,12 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
           },
         });
       }
-
       // Update Adamu's stats
       await prisma.labourer.update({
         where: { id: adamu.id },
         data: {
-          totalGigsCompleted: 8,
-          totalEarnedKobo: 28000000n, // 8 × ₦35,000
+          totalGigsCompleted: 14,
+          totalEarnedKobo: 49000000n, // 14 × ₦35,000
           reputationTier: 2,
         },
       });
@@ -385,6 +407,9 @@ demoRouter.post('/seed-tunde', async (req: Request, res: Response, next) => {
       console.warn('Embedding pre-compute failed (non-fatal):', embErr);
     }
 
+
+    const { recomputeCreditScore } = await import('../services/credit-score.service');
+    await recomputeCreditScore(TUNDE_FARMER_ID);
     res.json({
       ok: true,
       message: 'Tunde + labourers reset and re-seeded successfully',
@@ -484,5 +509,114 @@ demoRouter.post('/simulate-wage-completion', async (req: Request, res: Response,
     await wagesQueue.add('route-wage', { gigId: gig.id });
 
     res.json({ ok: true, gigId: gig.id, message: 'Both sides confirmed. Wage routing enqueued.' });
+  } catch (err) { next(err); }
+});
+// ─────────────────────────────────────────────────────────────────────
+// GET /demo/replay/projection
+// Pure read-only projection. Returns current state + calculated post-harvest state.
+// Zero DB writes. Safe to call any number of times.
+// ─────────────────────────────────────────────────────────────────────
+demoRouter.get('/replay/projection', async (_req: Request, res: Response, next) => {
+  try {
+    // Tunde (farmer)
+    const tunde = await prisma.user.findUnique({
+      where: { phone: '08012345678' },
+      include: { farmer: true },
+    });
+    if (!tunde || !tunde.farmer) throw new AppError(404, 'Tunde not seeded');
+    const farmerId = tunde.farmer.id;
+
+    // Adamu (labourer)
+    const adamu = await prisma.user.findUnique({
+      where: { phone: '08055555555' },
+      include: { labourer: true },
+    });
+    if (!adamu || !adamu.labourer) throw new AppError(404, 'Adamu not seeded');
+    const labourerId = adamu.labourer.id;
+
+    // Current balances
+    const farmerAccounts = await prisma.virtualAccount.findMany({
+      where: { farmerId },
+    });
+    const working = farmerAccounts.find((a) => a.purpose === 'WORKING');
+    const bills = farmerAccounts.find((a) => a.purpose === 'BILLS');
+    const nextSeason = farmerAccounts.find((a) => a.purpose === 'NEXT_SEASON');
+
+    const adamuVA = await prisma.virtualAccount.findFirst({
+      where: { userId: adamu.id, purpose: 'LABOUR_SAVINGS' },
+    });
+
+    // Split rule
+    const rule = await prisma.splitRule.findUnique({ where: { farmerId } });
+    const billsPct = rule?.billsPct ?? 25;
+    const nextSeasonPct = rule?.nextSeasonPct ?? 20;
+    const workingPct = 100 - billsPct - nextSeasonPct;
+
+    // Active credit (to be repaid at harvest)
+    const activeCredit = await prisma.inputDeferral.findFirst({
+      where: { farmerId, status: { in: ['ACTIVE', 'PENDING', 'DISBURSED'] } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const creditPrincipal = activeCredit ? Number(activeCredit.amount) : 0;
+    const creditFee = activeCredit ? Number(activeCredit.agroFee) : 0;
+    const creditTotal = creditPrincipal + creditFee;
+
+    // Liberation now
+    const libLogs = await prisma.liberationLog.findMany({ where: { farmerId } });
+    const liberationNow = libLogs.reduce(
+      (sum, l) => sum + Number(l.counterfactualLossKobo ?? 0),
+      0,
+    );
+
+    // ── Projection ──────────────────────────────────────────
+    const HARVEST_KOBO = 84_000_000; // ₦840,000
+    const WAGE_KOBO = 3_500_000;     // ₦35,000
+    const MIDDLEMAN_RATE = 0.30;
+    const WAGE_PREMIUM_RATE = 0.10;
+
+    // After harvest: split applied, then credit auto-repaid from working
+    const harvestToWorking = Math.floor(HARVEST_KOBO * workingPct / 100);
+    const harvestToBills = Math.floor(HARVEST_KOBO * billsPct / 100);
+    const harvestToNextSeason = Math.floor(HARVEST_KOBO * nextSeasonPct / 100);
+
+    const projectedWorking = Number(working?.cachedBalance ?? 0n) + harvestToWorking - creditTotal;
+    const projectedBills = Number(bills?.cachedBalance ?? 0n) + harvestToBills;
+    const projectedNextSeason = Number(nextSeason?.cachedBalance ?? 0n) + harvestToNextSeason;
+    const projectedAdamu = Number(adamuVA?.cachedBalance ?? 0n) + WAGE_KOBO;
+
+    // Liberation gain
+    const middlemanAvoided = Math.floor(HARVEST_KOBO * MIDDLEMAN_RATE);
+    const wagePremium = Math.floor(WAGE_KOBO * WAGE_PREMIUM_RATE);
+    const liberationGain = middlemanAvoided + wagePremium;
+    const projectedLiberation = liberationNow + liberationGain;
+
+    res.json({
+      current: {
+        working: Number(working?.cachedBalance ?? 0n),
+        bills: Number(bills?.cachedBalance ?? 0n),
+        nextSeason: Number(nextSeason?.cachedBalance ?? 0n),
+        adamuSavings: Number(adamuVA?.cachedBalance ?? 0n),
+        liberation: liberationNow,
+      },
+      projected: {
+        working: projectedWorking,
+        bills: projectedBills,
+        nextSeason: projectedNextSeason,
+        adamuSavings: projectedAdamu,
+        liberation: projectedLiberation,
+      },
+      facts: {
+        harvestKobo: HARVEST_KOBO,
+        wageKobo: WAGE_KOBO,
+        creditPrincipalKobo: creditPrincipal,
+        creditFeeKobo: creditFee,
+        middlemanAvoidedKobo: middlemanAvoided,
+        wagePremiumKobo: wagePremium,
+        splitRule: { workingPct, billsPct, nextSeasonPct },
+        supplierName: 'Lagos Fertilizer Co.',
+        labourerName: adamu.labourer.fullName,
+        labourerTier: adamu.labourer.reputationTier,
+      },
+    });
   } catch (err) { next(err); }
 });

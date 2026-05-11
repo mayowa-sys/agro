@@ -26,9 +26,10 @@ export const useConfirmGigDone = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.post(`/gigs/${id}/confirm-done`, { side: 'FARMER' }).then(r => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['gigs', 'me'] })
-    },
+      onSuccess: () => {
+          qc.invalidateQueries({ queryKey: ['gigs', 'me'] })
+          qc.invalidateQueries({ queryKey: ['labourer', 'dashboard'] })
+      },
   })
 }
 

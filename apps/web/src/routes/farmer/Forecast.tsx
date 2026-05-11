@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { api } from '@/lib/api';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Zap } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ForecastCalendar, type ForecastEvent, type CashGap } from '@/components/forecast/ForecastCalendar';
@@ -24,12 +26,25 @@ export default function Forecast() {
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [stressedForecast, setStressedForecast] = useState<any>(null);
 
+  const { data: deferrals } = useQuery<any[]>({
+    queryKey: ['deferrals', 'me'],
+    queryFn: () => api.get('/deferrals/me').then(r => r.data),
+  });
+  const pendingDeferral = (deferrals ?? []).find((d: any) => d.status === 'PENDING');
+
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setUTCHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
   const normalise = (evs: any[]): ForecastEvent[] =>
-    (evs ?? []).map((e) => ({
-      ...e,
-      date: e.date ?? e.expectedDate,
-      amount: Number(e.amount ?? e.expectedAmount),
-    }));
+      (evs ?? []).map((e) => ({
+        ...e,
+        date: e.date ?? e.expectedDate,
+        amount: Number(e.amount ?? e.expectedAmount),
+        reasons: e.reasonsJson ?? e.reasons ?? [],
+      }));
 
   const baseEvents = normalise(forecast?.events ?? []);
   const activeEvents = stressedForecast ? normalise(stressedForecast.events ?? []) : baseEvents;
@@ -41,6 +56,32 @@ export default function Forecast() {
   }));
 
   const series = balanceData?.series ?? [];
+  const actualGap = useMemo(() => {
+    if (series.length === 0) return null;
+    let minBal = 0;
+    let gapStart = '';
+    let gapEnd = '';
+    let inGap = false;
+    for (const p of series) {
+      const bal = Number(p.balanceKobo);
+      if (bal < minBal) minBal = bal;
+      if (!inGap && bal < 0) {
+        gapStart = p.date;
+        inGap = true;
+      }
+      if (inGap && bal >= 0) {
+        gapEnd = p.date;
+        break;
+      }
+    }
+    if (!gapStart) return null;
+    if (!gapEnd) gapEnd = series[series.length - 1].date;
+    return {
+      shortfallKobo: Math.abs(Math.round(minBal)),
+      startDate: gapStart,
+      endDate: gapEnd,
+    };
+  }, [series]);
   const horizonDays = balanceData?.horizonDays ?? 180;
 
   const handleDayClick = (date: Date, evs: ForecastEvent[]) => {
@@ -96,16 +137,17 @@ export default function Forecast() {
           <SeasonChart
             series={series}
             events={activeEvents}
-            cashGaps={gaps}
+            cashGaps={actualGap ? [{ startDate: actualGap.startDate, endDate: actualGap.endDate, shortfallKobo: actualGap.shortfallKobo }] : []}
             horizonDays={horizonDays}
           />
         )}
 
         {/* Cash gap banner */}
         <CashGapBanner
-          gaps={gaps}
-          onAdjustSplit={() => nav('/app/splits')}
-          onRequestDeferral={() => nav('/app/deferrals')}
+            gaps={actualGap ? [{ startDate: actualGap.startDate, endDate: actualGap.endDate, shortfallKobo: actualGap.shortfallKobo }] : []}
+            pendingDeferral={pendingDeferral}
+            onAdjustSplit={() => nav('/app/splits')}
+            onRequestDeferral={() => nav('/app/deferrals')}
         />
 
         {/* Operational calendar — 90 days */}

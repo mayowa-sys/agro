@@ -6,18 +6,10 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('agro_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-api.interceptors.response.use(
-  (r) => r,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('agro_token');
-      window.location.href = '/login';
+    // Only inject stored token if no Authorization header is already set
+    if (!config.headers.Authorization) {
+        const token = localStorage.getItem('agro_token');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
     }
-    return Promise.reject(error);
-  }
-);
+    return config;
+});

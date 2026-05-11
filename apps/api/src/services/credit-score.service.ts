@@ -81,13 +81,14 @@ export async function recomputeCreditScore(farmerId: string) {
   const ageScore = Math.min(100, Math.round((accountAgeMonths / 12) * 100));
 
   // ── Weighted total ──────────────────────────────────────────────────
-  const score = Math.round(
+  const weightedRaw =
     repaymentScore * 0.35 +
     confidenceScore * 0.25 +
     reputationScore * 0.15 +
     trendScore * 0.15 +
-    ageScore * 0.10
-  );
+    ageScore * 0.10;
+  // Map 0‑100 → 300‑850
+  const score = Math.round(300 + (weightedRaw / 100) * 550);
   const clamped = Math.min(850, Math.max(300, score));
   const tier = scoreToTier(clamped);
   const creditLimitKobo = TIER_LIMITS[tier];

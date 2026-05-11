@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Clock, Star, ChevronDown, ChevronUp, X, CheckCircle2 } from 'lucide-react'
 import {
   useMyJobs,
@@ -70,6 +70,15 @@ function ConfirmDoneDialog({ gigId, labourerName, onClose }: {
   const [comment, setComment] = useState('')
   const confirmGig = useConfirmGigDone()
   const rateLabourer = useRateLabourer()
+  const { data: gigData } = useGig(gigId)
+  const currentStatus = gigData?.status ?? gigData?.gig?.status
+
+  // If gig is already resolved, skip straight to rating or close
+  useEffect(() => {
+    if (currentStatus === 'PAID' || currentStatus === 'CLOSED' || currentStatus === 'BOTH_CONFIRMED') {
+      setStep('rate')
+    }
+  }, [currentStatus])
   const { refetch } = useGig(gigId)
 
   async function handleConfirm() {
@@ -325,9 +334,8 @@ function CompletedGigsTab() {
                   {rated && (
                     <div className="mt-1.5 flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map(n => (
-                        <Star key={n} className="h-3.5 w-3.5"
-                          fill={n <= (gig.rating?.score ?? 0) ? 'hsl(43 96% 56%)' : 'transparent'}
-                          style={{ color: n <= (gig.rating?.score ?? 0) ? 'hsl(43 96% 56%)' : 'hsl(var(--muted-foreground))' }} />
+                        <Star key={n} className="h-3.5 w-3.5" fill={n <= (gig.rating?.farmerScoreOfLabourer ?? 0) ? 'hsl(43 96% 56%)' : 'transparent'}
+                              style={{ color: n <= (gig.rating?.farmerScoreOfLabourer ?? 0) ? 'hsl(43 96% 56%)' : 'hsl(var(--muted-foreground))' }} />
                       ))}
                     </div>
                   )}

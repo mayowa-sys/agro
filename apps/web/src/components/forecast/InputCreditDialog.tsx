@@ -66,6 +66,8 @@ export function InputCreditDialog({ open, onClose, prefillAmountKobo, prefillEnd
         expectedRepayDate: new Date(repayDate).toISOString(),
       })
       await qc.invalidateQueries({ queryKey: ['deferrals'] })
+      await qc.invalidateQueries({ queryKey: ['forecast'] });
+      await qc.invalidateQueries({ queryKey: ['projected-balance'] });
       setSuccess(true)
       setTimeout(() => { onClose(); setSuccess(false) }, 1800)
     } catch (e: any) {

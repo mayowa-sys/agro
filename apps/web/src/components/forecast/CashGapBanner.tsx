@@ -1,3 +1,4 @@
+import { cn } from '@/lib/cn';
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { AlertTriangle, ArrowRight, Sprout, SlidersHorizontal, Banknote, X } from 'lucide-react';
@@ -7,6 +8,7 @@ import { InputCreditDialog } from './InputCreditDialog'
 
 interface Props {
   gaps: CashGap[];
+  pendingDeferral?: { id: string; amount: string; status: string } | null;
   onRequestDeferral?: () => void;
   onAdjustSplit?: () => void;
   onRequestFactoring?: () => void;
@@ -18,7 +20,7 @@ const ACTIONS = [
   { Icon: Banknote,           label: 'Request factoring advance', sub: 'Get paid early on your harvest',     key: 'factoring' },
 ];
 
-export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onRequestFactoring }: Props) {
+export function CashGapBanner({ gaps, pendingDeferral, onRequestDeferral, onAdjustSplit, onRequestFactoring }: Props) {
   const [open, setOpen] = useState(false);
   const [inputCreditOpen, setInputCreditOpen] = useState(false);
   const worstGap = gaps.length > 0 ? gaps.reduce((a, b) => (b.shortfallKobo > a.shortfallKobo ? b : a), gaps[0]) : null;
@@ -46,9 +48,16 @@ export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onReques
             {format(parseISO(worst.startDate), 'MMM d')} – {format(parseISO(worst.endDate), 'MMM d')}
           </span>
         </div>
-        <span className="text-xs text-muted-foreground font-sans uppercase tracking-wider group-hover:text-foreground transition-colors flex items-center gap-1">
-          Take action <ArrowRight size={11} />
-        </span>
+        {pendingDeferral ? (
+            <span className="text-xs text-leaf-500 font-sans font-medium flex items-center gap-1">
+            <Sprout size={11} />
+              {formatNaira(Number(pendingDeferral.amount), { compact: true })} pending approval
+          </span>
+        ) : (
+            <span className="text-xs text-muted-foreground font-sans uppercase tracking-wider group-hover:text-foreground transition-colors flex items-center gap-1">
+            Take action <ArrowRight size={11} />
+          </span>
+        )}
       </button>
 
       {open && (
@@ -81,22 +90,34 @@ export function CashGapBanner({ gaps, onRequestDeferral, onAdjustSplit, onReques
             </div>
             <div className="px-4 py-4 space-y-2">
               {ACTIONS.map(({ Icon, label, sub, key }) => (
-                <button
-                  key={key}
-                  onClick={() => { setOpen(false); if (key === 'deferral') { setInputCreditOpen(true); } else { handlers[key]?.(); } }}
-                  className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-all group"
-                  style={{
-                    background: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                  }}
-                >
-                  <Icon size={15} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium font-sans" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
-                    <p className="text-xs font-sans" style={{ color: 'hsl(var(--muted-foreground))' }}>{sub}</p>
-                  </div>
-                  <ArrowRight size={13} className="text-muted-foreground group-hover:text-foreground transition-colors" />
-                </button>
+                  <button
+                      key={key}
+                      disabled={key === 'deferral' && !!pendingDeferral}
+                      onClick={() => {
+                        setOpen(false);
+                        if (key === 'deferral') {
+                          if (pendingDeferral) return;
+                          setInputCreditOpen(true);
+                        } else {
+                          handlers[key]?.();
+                        }
+                      }}
+                      className={cn(
+                          'w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-all group',
+                          key === 'deferral' && pendingDeferral && 'opacity-50 cursor-not-allowed',
+                      )}
+                      style={{
+                        background: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                      }}
+                  >
+                    <Icon size={15} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium font-sans" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
+                      <p className="text-xs font-sans" style={{ color: 'hsl(var(--muted-foreground))' }}>{sub}</p>
+                    </div>
+                    <ArrowRight size={13} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
               ))}
             </div>
           </div>

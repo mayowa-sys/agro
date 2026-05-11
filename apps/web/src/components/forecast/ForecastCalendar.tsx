@@ -10,6 +10,7 @@ export interface ForecastEvent {
   amount: number;
   category: string;
   label?: string;
+  reasons?: string[];  // <-- add this
 }
 
 export interface CashGap {
@@ -109,7 +110,7 @@ export function ForecastCalendar({ events, cashGaps, onDayClick }: Props) {
             {week.map((day) => {
               const key = format(day, 'yyyy-MM-dd');
               const dayEvents = eventsByDate[key] ?? [];
-              const net = dayEvents.reduce((s, e) => s + e.amount, 0);
+              const net = dayEvents.reduce((s, e) => s + (e.type === 'EXPENSE' ? -e.amount : e.amount), 0);
               const inGap = isInGap(day);
               const isToday = isSameDay(day, new Date());
               const hasEvents = dayEvents.length > 0;

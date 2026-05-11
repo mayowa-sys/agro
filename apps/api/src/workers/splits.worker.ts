@@ -17,6 +17,7 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
   if (!rule) throw new Error(`No split rule for farmer ${farmerId}`);
 
   let total = BigInt(amount);
+  const harvestTotal = total;
 
   // Load accounts first
   const accounts = await prisma.virtualAccount.findMany({ where: { farmerId } });
@@ -60,20 +61,22 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
       // Trigger credit score recompute (fire-and-forget)
       recomputeCreditScore(farmerId).catch(err => console.warn('Credit score recompute failed:', err));
 
-      await prisma.liberationLog.create({
-        data: {
-          farmerId,
-          source: 'MIDDLEMAN_DISCOUNT_AVOIDED',
-          counterfactualLossKobo: credit.amount,
-          methodologyNote: `Credit ${credit.id} auto-repaid from harvest inflow. Principal: ₦${Number(credit.amount / 100n)}. AGRO fee (${feePct}%): ₦${Number(feeKobo / 100n)}. Total recovered: ₦${Number(totalDue / 100n)}. Middleman discount avoided estimated at 30% of harvest inflow. See /methodology for sources.`,
-        },
-      });
-
       remainingAmount -= totalDue;
     } else {
       break; // not enough to cover this credit
     }
   }
+
+  // ── Liberation: middleman discount avoided = 30% of full harvest inflow ──
+  const middlemanAvoided = BigInt(Math.round(Number(harvestTotal) * 0.30));
+  await prisma.liberationLog.create({
+    data: {
+      farmerId,
+      source: 'MIDDLEMAN_DISCOUNT_AVOIDED',
+      counterfactualLossKobo: middlemanAvoided,
+      methodologyNote: `Harvest inflow: ₦${Number(harvestTotal / 100n)}. Counterfactual middleman discount estimated at 30% based on Babban Gona field observations and CGAP smallholder reports — ₦${Number(middlemanAvoided / 100n)} discount avoided. See /methodology.`,
+    },
+  });
 
   // Use remaining amount for splits
   total = remainingAmount;

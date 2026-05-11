@@ -11,30 +11,20 @@ interface Props {
   events: ForecastEvent[];
 }
 
-const REASONS: Record<string, string[]> = {
-  INCOME: [
-    'Harvest payment typically lands in this window based on your crop cycle',
-    'Historical buyer payment patterns for this crop align with this date',
-    'Weather-adjusted maturity estimate from your CropPlaybook',
-  ],
-  EXPENSE: [
-    'Input cost repayment aligned with your deferral agreement',
-    'Seasonal labour cost peak from historical spend data',
-    'Transport and market fees estimated from prior harvests',
-  ],
-  NEUTRAL: [
-    'Mixed cash flows expected — income and expenses nearly offset',
-    'Low-activity period between planting and harvest',
-    'No significant transactions predicted in this window',
-  ],
-};
 
 export function ForecastReasonsDrawer({ open, onClose, date, events }: Props) {
-  const net = events.reduce((s, e) => s + e.amount, 0);
+  const net = events.reduce((s, e) => s + (e.type === 'EXPENSE' ? -Math.abs(e.amount) : Math.abs(e.amount)), 0);
   const dominantType = net > 0 ? 'INCOME' : net < 0 ? 'EXPENSE' : 'NEUTRAL';
   const confidence = Math.min(95, 72 + Math.floor((Math.abs(net) / 1_000_000) % 20));
-  const reasons = REASONS[dominantType];
   const sortedEvents = [...events].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  const dominantEvent = sortedEvents[0];
+  const reasons = dominantEvent?.reasons?.length
+      ? dominantEvent.reasons
+      : (dominantType === 'INCOME'
+          ? ['Income predicted based on crop cycle and market data']
+          : dominantType === 'EXPENSE'
+              ? ['Expense predicted based on seasonal spending patterns']
+              : ['No significant cash flow predicted']);
 
   const NetIcon = dominantType === 'INCOME' ? TrendingUp : dominantType === 'EXPENSE' ? TrendingDown : Minus;
   const netColor = dominantType === 'INCOME' ? 'text-leaf-500' : dominantType === 'EXPENSE' ? 'text-destructive' : 'text-muted-foreground';
@@ -90,22 +80,22 @@ export function ForecastReasonsDrawer({ open, onClose, date, events }: Props) {
 
           {/* Breakdown */}
           {sortedEvents.length > 0 && (
-            <div>
-              <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans mb-3">Breakdown</p>
-              <div className="space-y-2.5">
-                {sortedEvents.map((e, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${e.amount >= 0 ? 'bg-leaf-500' : 'bg-destructive'}`} />
-                      <span className="text-sm text-foreground font-sans truncate">{e.category.replace(/_/g, ' ')}</span>
-                    </div>
-                    <span className={`text-sm font-semibold font-sans tabular-nums shrink-0 ${e.amount >= 0 ? 'text-leaf-500' : 'text-destructive'}`}>
-                      {e.amount >= 0 ? '+' : '−'}{formatNaira(Math.abs(e.amount), { compact: true })}
+              <div>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-sans mb-3">Breakdown</p>
+                <div className="space-y-2.5">
+                  {sortedEvents.map((e, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${e.type === 'EXPENSE' ? 'bg-destructive' : 'bg-leaf-500'}`} />
+                          <span className="text-sm text-foreground font-sans truncate">{e.category.replace(/_/g, ' ')}</span>
+                        </div>
+                        <span className={`text-sm font-semibold font-sans tabular-nums shrink-0 ${e.type === 'EXPENSE' ? 'text-destructive' : 'text-leaf-500'}`}>
+                      {e.type === 'EXPENSE' ? '−' : '+'}{formatNaira(Math.abs(e.amount), { compact: true })}
                     </span>
-                  </div>
-                ))}
+                      </div>
+                  ))}
+                </div>
               </div>
-            </div>
           )}
 
           {/* Reasons */}

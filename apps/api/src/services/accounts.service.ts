@@ -222,6 +222,7 @@ export async function getFarmerDashboard(userId: string) {
       id: d.id,
       supplierName: d.supplier.name,
       amountKobo: String(d.amount),
+      agroFeeKobo: String(d.agroFee ?? 0),
       repaymentDate: d.expectedRepayBy,
       status: d.status,
     })),

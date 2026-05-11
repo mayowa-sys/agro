@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Sprout, TrendingUp, SplitSquareHorizontal, Clock, Hammer,
-  Wallet, ArrowRight, ChevronRight, Sparkles, AlertTriangle, Briefcase,
+  Wallet, ArrowRight, ChevronRight, Sparkles, AlertTriangle, Briefcase, Play,
 } from 'lucide-react'
 import { useFarmerDashboard } from '@/hooks/useFarmerDashboard'
 import CreditScoreWidget from '@/components/farmer/CreditScoreWidget'
+import { SeasonReplay } from '@/components/farmer/SeasonReplay'
 
 const LEAF = 'hsl(142 71% 35%)'
 const LEAF_DEEP = 'hsl(142 71% 25%)'
@@ -70,6 +72,8 @@ function Skeleton() {
 export default function Dashboard() {
   const nav = useNavigate()
   const { data, isLoading } = useFarmerDashboard()
+
+  const [replayOpen, setReplayOpen] = useState(false)
 
   if (isLoading) return <Skeleton />
 
@@ -139,6 +143,14 @@ export default function Dashboard() {
                 <span style={{ color: 'hsl(var(--foreground))' }}>{formatNaira(liberation.allTime.byCashOnDayPremium)}</span>
               </div>
             </div>
+            <button
+              onClick={() => setReplayOpen(true)}
+              className="mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90"
+              style={{ background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}
+            >
+              <Play size={12} fill="currentColor" />
+              Watch Season Replay
+            </button>
           </div>
         </div>
       </section>
@@ -288,7 +300,7 @@ export default function Dashboard() {
             <div>
               <div className="mb-4 flex items-end justify-between">
                 <h2 className="font-serif text-xl" style={{ color: 'hsl(var(--foreground))' }}>
-                  Deferrals
+                  Input Credit
                 </h2>
                 <button
                   onClick={() => nav('/app/deferrals')}
@@ -315,6 +327,9 @@ export default function Dashboard() {
                     </div>
                     <p className="shrink-0 text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
                       {formatNairaFull(d.amountKobo)}
+                      <span className="text-xs ml-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        (incl. {formatNairaFull(d.agroFeeKobo ?? 0)} fee)
+                      </span>
                     </p>
                   </div>
                 ))}
@@ -332,7 +347,7 @@ export default function Dashboard() {
             {[
               { icon: TrendingUp, label: 'Forecast', sub: 'See cash flow ahead', to: '/app/forecast' },
               { icon: SplitSquareHorizontal, label: 'Splits', sub: 'Tune harvest routing', to: '/app/splits' },
-              { icon: Clock, label: 'Deferrals', sub: 'Manage supplier credit', to: '/app/deferrals' },
+              { icon: Clock, label: 'Input Credit', sub: 'Manage supplier credit', to: '/app/deferrals' },
               { icon: Hammer, label: 'Jobs', sub: 'Hire & rate labourers', to: '/app/jobs' },
             ].map(({ icon: Icon, label, sub, to }) => (
               <button
@@ -359,6 +374,7 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+      {replayOpen && <SeasonReplay onClose={() => setReplayOpen(false)} />}
     </div>
   )
 }

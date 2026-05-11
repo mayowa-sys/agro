@@ -76,11 +76,11 @@ export const wagesWorker = new Worker(
                 where: { labourerId: gig.labourerId, status: 'APPROVED' },
             });
             if (outstandingAdvance) {
-                const deductKobo = outstandingAdvance.approvedKobo - outstandingAdvance.repaidKobo;
+                const deductKobo = (outstandingAdvance.approvedKobo ?? 0n) - outstandingAdvance.repaidKobo;
                 const actualDeduct = deductKobo > payableKobo ? payableKobo : deductKobo;
                 payableKobo = payableKobo - actualDeduct;
                 const newRepaid = outstandingAdvance.repaidKobo + actualDeduct;
-                const fullyRepaid = newRepaid >= outstandingAdvance.approvedKobo;
+                const fullyRepaid = newRepaid >= (outstandingAdvance.approvedKobo ?? 0n);
                 await prisma.wageAdvance.update({
                     where: { id: outstandingAdvance.id },
                     data: {
@@ -125,6 +125,15 @@ export const wagesWorker = new Worker(
                     totalEarnedKobo: { increment: gig.agreedAmountKobo },
                     totalGigsCompleted: { increment: 1 },
                 },
+            });
+            // Update VA cached balances
+            await prisma.virtualAccount.update({
+                where: { id: farmerWorkingVA.id },
+                data: { cachedBalance: { decrement: payableKobo } },
+            });
+            await prisma.virtualAccount.update({
+                where: { id: labourerSavingsVA.id },
+                data: { cachedBalance: { increment: payableKobo } },
             });
 
             const premiumKobo = BigInt(Math.floor(Number(gig.agreedAmountKobo) * PREMIUM_PCT / 100));

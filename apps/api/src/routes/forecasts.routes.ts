@@ -73,7 +73,9 @@ forecastsRouter.get('/me/projected-balance', requireAuth, requireRole('FARMER'),
       byDay.set(dayOffset, (byDay.get(dayOffset) ?? 0n) + delta);
     }
 
-    let running = 0n;
+    // Start from current total balance across all farmer accounts
+    const accounts = await prisma.virtualAccount.findMany({ where: { farmerId: farmer.id } });
+    let running = accounts.reduce((sum, a) => sum + (a.cachedBalance ?? 0n), 0n);
     const series: Array<{ day: number; date: string; balanceKobo: string }> = [];
     for (let d = 0; d <= horizonDays; d++) {
       running += byDay.get(d) ?? 0n;

@@ -82,9 +82,15 @@ export default function CreditScoreWidget() {
           <span>300</span>
           <span>850</span>
         </div>
-        <div className="h-2 rounded-full bg-muted">
+        <div
+          className="h-3 rounded-full"
+          style={{
+            background: 'hsl(var(--muted))',
+            border: '1px solid hsl(var(--border))',
+          }}
+        >
           <div
-            className="h-2 rounded-full transition-all duration-500"
+            className="h-full rounded-full transition-all duration-500"
             style={{
               width: `${Math.min(100, Math.max(0, scorePercent))}%`,
               background: 'hsl(142 71% 35%)',

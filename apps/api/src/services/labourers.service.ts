@@ -161,6 +161,20 @@ export async function getLabourerDashboard(userId: string) {
   try {
     const res = await aiClient.get(`/match/jobs-for-labourer/${labourer.id}`, { params: { limit: 10 } });
     nearbyJobs = res.data?.matches ?? [];
+
+    // Filter out jobs the labourer already has an active gig for
+    const activeGigJobIds = (
+        await prisma.gig.findMany({
+          where: {
+            labourerId: labourer.id,
+            status: { in: ['ACCEPTED', 'FARMER_CONFIRMED_DONE', 'LABOURER_CONFIRMED_DONE', 'BOTH_CONFIRMED', 'PAID', 'CLOSED'] },
+          },
+          select: { jobId: true },
+        })
+    ).map(g => g.jobId);
+
+    nearbyJobs = nearbyJobs.filter((job: any) => !activeGigJobIds.includes(job.jobId));
+
   } catch (err) {
     logger.warn('AI match service unavailable for dashboard, returning empty nearbyJobs:', err);
   }
