@@ -162,7 +162,7 @@ export function Login() {
              style={{ transitionDelay: '600ms' }}>
           <div className="bg-stone-900/90 backdrop-blur rounded-xl shadow-xl px-4 py-3 max-w-[220px]">
             <p className="text-[10px] uppercase tracking-widest text-stone-400 font-sans">Liberation counter</p>
-            <p className="font-display text-2xl text-stone-100 mt-0.5">₦12.4B</p>
+            <p className="font-display text-2xl text-stone-100 mt-0.5">₦860k</p>
             <p className="text-xs text-stone-400 font-sans">freed from middlemen</p>
           </div>
         </div>
@@ -170,10 +170,10 @@ export function Login() {
         {/* Quote at bottom */}
         <div className={`absolute bottom-12 left-12 right-12 z-10 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
              style={{ transitionDelay: '900ms' }}>
-          <blockquote className="font-display text-xl italic text-stone-900 leading-snug">
+          <blockquote className="text-xl italic text-white leading-snug" style={{ fontFamily: 'Ojuju, sans-serif', fontWeight: 300 }}>
             "Plant in confidence. Harvest with foresight."
           </blockquote>
-          <p className="text-xs text-stone-800/70 font-sans mt-2 uppercase tracking-widest">Built for Nigerian smallholders</p>
+          <p className="text-lg text-white/80 uppercase tracking-widest mt-4" style={{ fontFamily: "Ojuju, sans-serif", fontWeight: 300 }}>Built for Nigerian smallholders</p>
         </div>
       </div>
 

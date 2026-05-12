@@ -54,9 +54,11 @@ function useCountUpFrom(start: number, target: number, duration = 1200, enabled 
 type Projection = {
   current: {
     working: number; bills: number; nextSeason: number; adamuSavings: number; liberation: number
+    asOf?: string
   }
   projected: {
     working: number; bills: number; nextSeason: number; adamuSavings: number; liberation: number
+    harvestDate?: string; harvestKobo?: number
   }
   facts: {
     harvestKobo: number; wageKobo: number
@@ -64,6 +66,8 @@ type Projection = {
     middlemanAvoidedKobo: number; wagePremiumKobo: number
     splitRule: { workingPct: number; billsPct: number; nextSeasonPct: number }
     supplierName: string; labourerName: string; labourerTier: number
+    harvestDate?: string
+    harvestFromProphet?: boolean
   }
 }
 
@@ -265,12 +269,32 @@ function Act4Harvest({ data }: { data: Projection }) {
     return () => { [t1, t2, t3, t4].forEach(clearTimeout) }
   }, [])
   const harvestAmount = useCountUp(data.facts.harvestKobo, 1500)
+  // Narrative label for harvest date — relative to today so it stays accurate
+  // regardless of when the seed was run.
+  const harvestLabel = (() => {
+    const iso = data.projected.harvestDate ?? data.facts.harvestDate
+    if (!iso) return 'Harvest day'
+    const target = new Date(iso)
+    const now = new Date()
+    const days = Math.round((target.getTime() - now.getTime()) / 86400000)
+    if (days <= 0) return 'Today'
+    if (days === 1) return 'Tomorrow'
+    if (days <= 90) return `${days} days from now`
+    const months = Math.round(days / 30)
+    return `${months} months from now`
+  })()
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5 }} className="space-y-6">
       <div className="text-center">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: INK_DIM }}>Act Four · October 15</p>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: INK_DIM }}>Act Four · {harvestLabel}</p>
         <h2 className="font-serif text-5xl md:text-6xl leading-none tracking-tight" style={{ color: INK }}>{formatNaira(harvestAmount)}</h2>
         <p className="mt-3 text-sm" style={{ color: INK_DIM }}>Harvest sold · Cash hits Tunde's working account</p>
+        {data.facts.harvestFromProphet && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }} className="mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1" style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.25)' }}>
+            <Sparkles size={10} style={{ color: LEAF }} />
+            <span className="text-[10px] font-medium tracking-wide" style={{ color: LEAF }}>Prophet model forecast</span>
+          </motion.div>
+        )}
       </div>
       <AnimatePresence>
         {potsVisible && (

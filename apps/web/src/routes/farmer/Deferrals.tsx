@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
-type DeferralStatus = 'PENDING' | 'ACTIVE' | 'REPAID' | 'DEFAULTED' | 'CANCELLED';
+type DeferralStatus = 'PENDING' | 'ACTIVE' | 'DISBURSED' | 'REPAID' | 'DEFAULTED' | 'CANCELLED';
 
 const STATUS_CONFIG: Record<DeferralStatus, {
   label: string;
@@ -35,6 +35,12 @@ const STATUS_CONFIG: Record<DeferralStatus, {
   },
   ACTIVE: {
     label: 'Active',
+    icon: CheckCircle2,
+    color: '#22c55e',
+    bg: 'rgba(34,197,94,0.1)',
+  },
+  DISBURSED: {
+    label: 'Disbursed',
     icon: CheckCircle2,
     color: '#22c55e',
     bg: 'rgba(34,197,94,0.1)',
@@ -501,7 +507,7 @@ function SupplierCard({
 // ─── Deferral row ─────────────────────────────────────────────────────────────
 
 function DeferralRow({ deferral }: { deferral: Deferral }) {
-  const cfg = STATUS_CONFIG[deferral.status];
+  const cfg = STATUS_CONFIG[deferral.status] ?? STATUS_CONFIG.PENDING;
   const Icon = cfg.icon;
   const naira = koboToNaira(deferral.amount);
   const repayBy = new Date(deferral.expectedRepayBy).toLocaleDateString('en-NG', {

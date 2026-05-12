@@ -18,7 +18,6 @@ export default function Forecast() {
   const { data: balanceData } = useProjectedBalance();
   const regenerate = useRegenerateForecast();
   const stressTest = useStressTest();
-
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEvents, setSelectedEvents] = useState<ForecastEvent[]>([]);
@@ -32,12 +31,6 @@ export default function Forecast() {
   });
   const pendingDeferral = (deferrals ?? []).find((d: any) => d.status === 'PENDING');
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
   const normalise = (evs: any[]): ForecastEvent[] =>
       (evs ?? []).map((e) => ({
         ...e,
@@ -48,6 +41,7 @@ export default function Forecast() {
 
   const baseEvents = normalise(forecast?.events ?? []);
   const activeEvents = stressedForecast ? normalise(stressedForecast.events ?? []) : baseEvents;
+
   const rawGaps: any[] = Array.isArray(gapData) ? gapData : (gapData?.gaps ?? []);
   const gaps: CashGap[] = rawGaps.map(g => ({
     startDate: g.startDate,
@@ -56,6 +50,7 @@ export default function Forecast() {
   }));
 
   const series = balanceData?.series ?? [];
+
   const actualGap = useMemo(() => {
     if (series.length === 0) return null;
     let minBal = 0;
@@ -82,10 +77,17 @@ export default function Forecast() {
       endDate: gapEnd,
     };
   }, [series]);
+
   const horizonDays = balanceData?.horizonDays ?? 180;
 
   const handleDayClick = (date: Date, evs: ForecastEvent[]) => {
     if (!evs.length) return;
+    setSelectedDate(date);
+    setSelectedEvents(evs);
+    setDrawerOpen(true);
+  };
+
+  const handleMarkerClick = (date: Date, evs: ForecastEvent[]) => {
     setSelectedDate(date);
     setSelectedEvents(evs);
     setDrawerOpen(true);
@@ -97,10 +99,13 @@ export default function Forecast() {
     setStressedForecast(result);
   };
 
+  const chartGaps = actualGap
+    ? [{ startDate: actualGap.startDate, endDate: actualGap.endDate, shortfallKobo: actualGap.shortfallKobo }]
+    : [];
+
   return (
     <div className="min-h-full bg-background text-foreground">
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
-
         {/* Page header */}
         <div className="flex items-end justify-between">
           <div>
@@ -130,27 +135,28 @@ export default function Forecast() {
           </div>
         </div>
 
-        {/* Hero — projected balance over the season */}
+        {/* Detailed projected balance chart */}
         {fLoading || series.length === 0 ? (
-          <Skeleton className="h-[340px] w-full rounded-2xl" />
+          <Skeleton className="h-[380px] w-full rounded-2xl" />
         ) : (
           <SeasonChart
             series={series}
             events={activeEvents}
-            cashGaps={actualGap ? [{ startDate: actualGap.startDate, endDate: actualGap.endDate, shortfallKobo: actualGap.shortfallKobo }] : []}
+            cashGaps={chartGaps}
             horizonDays={horizonDays}
+            onMarkerClick={handleMarkerClick}
           />
         )}
 
         {/* Cash gap banner */}
         <CashGapBanner
-            gaps={actualGap ? [{ startDate: actualGap.startDate, endDate: actualGap.endDate, shortfallKobo: actualGap.shortfallKobo }] : []}
+            gaps={chartGaps}
             pendingDeferral={pendingDeferral}
             onAdjustSplit={() => nav('/app/splits')}
             onRequestDeferral={() => nav('/app/deferrals')}
         />
 
-        {/* Operational calendar — 90 days */}
+        {/* Cash flow calendar */}
         <div className="rounded-2xl border border-border bg-card p-6">
           {fLoading ? (
             <div className="space-y-2">
@@ -170,6 +176,7 @@ export default function Forecast() {
         date={selectedDate}
         events={selectedEvents}
       />
+
       <StressTestConsole
         open={stressOpen}
         onClose={() => setStressOpen(false)}

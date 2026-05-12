@@ -9,7 +9,6 @@ const farmerLinks = [
   { to: '/app/splits',        label: 'Splits',        icon: SplitSquareHorizontal },
   { to: '/app/deferrals',     label: 'Input Credit',  icon: Clock },
   { to: '/app/jobs',          label: 'Jobs',          icon: Hammer },
-  { to: '/app/season-replay', label: 'Season Replay', icon: PlayCircle },
 ];
 
 const labourerLinks = [

@@ -36,11 +36,16 @@ class ForecastRequest(BaseModel):
     expected_harvest_date: Optional[str] = None
     transaction_history: List[TransactionItem] = []
     horizon_days: int = 90
+    starting_balance_kobo: int = 0
 
 class StressTestRequest(BaseModel):
     crop_type: str
     scenario: str
     transaction_history: List[TransactionItem] = []
+    starting_balance_kobo: int = 0
+    region: str = "Nigeria"
+    planting_date: Optional[str] = None
+    expected_harvest_date: Optional[str] = None
 
 class SplitSuggestRequest(BaseModel):
     farmer_id: str
@@ -59,6 +64,7 @@ def forecast_endpoint(req: ForecastRequest):
             expected_harvest_date=req.expected_harvest_date,
             transaction_history=[t.model_dump() for t in req.transaction_history],
             horizon_days=req.horizon_days,
+            starting_balance_kobo=req.starting_balance_kobo,
         )
         return result
     except FileNotFoundError as e:
@@ -77,6 +83,10 @@ def stress_test_endpoint(req: StressTestRequest):
             crop_type=req.crop_type,
             scenario=req.scenario,
             transaction_history=[t.model_dump() for t in req.transaction_history],
+            starting_balance_kobo=req.starting_balance_kobo,
+            region=req.region,
+            planting_date=req.planting_date,
+            expected_harvest_date=req.expected_harvest_date,
         )
         return result
     except Exception as e:

@@ -197,10 +197,25 @@ def _build_balance_series(events, today, horizon_days):
     return series
 
 
-def _detect_cash_gaps(events: List[Dict], today: datetime) -> List[Dict[str, Any]]:
+def _detect_cash_gaps(
+    events: List[Dict],
+    today: datetime,
+    starting_balance_kobo: int = 0,
+) -> List[Dict[str, Any]]:
+    """Detect cash gaps in projected balance series.
+
+    A gap opens when the running balance crosses below zero and closes when it
+    recovers to >= 0. starting_balance_kobo is the farmer's actual Working pot
+    balance at "today" — without this, every farmer is modelled as starting
+    broke, which inflates gaps by the value of their existing cash.
+
+    The gap amount reported is the deepest (most negative) point reached during
+    the gap, i.e. the peak unmet need — not the cumulative shortfall.
+    """
     gaps = []
-    running = 0
+    running = int(starting_balance_kobo)
     gap_start = None
+    deepest = 0  # tracks min running balance during the current gap
 
     for event in events:
         if event["type"] == "INCOME":
@@ -208,23 +223,27 @@ def _detect_cash_gaps(events: List[Dict], today: datetime) -> List[Dict[str, Any
         else:
             running -= event["amount"]
 
-        if running < 0 and gap_start is None:
-            gap_start = event["date"]
+        if running < 0:
+            if gap_start is None:
+                gap_start = event["date"]
+                deepest = running
+            elif running < deepest:
+                deepest = running
         elif running >= 0 and gap_start is not None:
             gaps.append({
                 "start_date": gap_start,
                 "end_date": event["date"],
-                "gap_amount_kobo": abs(running),
+                "gap_amount_kobo": abs(deepest),
                 "status": "PREDICTED",
             })
             gap_start = None
+            deepest = 0
 
-    # Close any open gap at end of horizon
     if gap_start is not None:
         gaps.append({
             "start_date": gap_start,
             "end_date": (today + timedelta(days=90)).isoformat(),
-            "gap_amount_kobo": abs(running),
+            "gap_amount_kobo": abs(deepest),
             "status": "PREDICTED",
         })
 
@@ -238,7 +257,8 @@ def forecast(
     planting_date: Optional[str],
     expected_harvest_date: Optional[str],
     transaction_history: List[Dict[str, Any]],
-    horizon_days: int = 90,
+    horizon_days: int = 180,
+    starting_balance_kobo: int = 0,
 ) -> Dict[str, Any]:
     model = load_model(crop_type)
 
@@ -280,7 +300,7 @@ def forecast(
     events.extend(_generate_expense_events(crop_type, today, horizon_days, planting_date, expected_harvest_date))
     events.sort(key=lambda e: e["date"])
 
-    cash_gaps = _detect_cash_gaps(events, today)
+    cash_gaps = _detect_cash_gaps(events, today, starting_balance_kobo=starting_balance_kobo)
     projected_balance = _build_balance_series(events, today, horizon_days)
 
     return {
@@ -298,16 +318,21 @@ def stress_test(
     crop_type: str,
     scenario: str,
     transaction_history: List[Dict[str, Any]],
-    horizon_days: int = 90,
+    horizon_days: int = 180,
+    starting_balance_kobo: int = 0,
+    region: str = "Nigeria",
+    planting_date: Optional[str] = None,
+    expected_harvest_date: Optional[str] = None,
 ) -> Dict[str, Any]:
     base = forecast(
         farmer_id="stress-test",
         crop_type=crop_type,
-        region="Nigeria",
-        planting_date=None,
-        expected_harvest_date=None,
+        region=region,
+        planting_date=planting_date,
+        expected_harvest_date=expected_harvest_date,
         transaction_history=transaction_history,
         horizon_days=horizon_days,
+        starting_balance_kobo=starting_balance_kobo,
     )
 
     events = base["events"]
@@ -338,6 +363,6 @@ def stress_test(
         events = shifted
 
     base["events"] = events
-    base["cash_gaps"] = _detect_cash_gaps(events, datetime.utcnow())
+    base["cash_gaps"] = _detect_cash_gaps(events, datetime.utcnow(), starting_balance_kobo=starting_balance_kobo)
     base["scenario"] = scenario
     return base

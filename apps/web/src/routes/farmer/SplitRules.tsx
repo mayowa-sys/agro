@@ -8,7 +8,9 @@ import {
   Save,
   RefreshCw,
   Info,
+  CheckCircle2,
 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 import { toast } from 'sonner';
 import {
@@ -353,6 +355,108 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
+// ─── Last applied callout ────────────────────────────────────────────────────
+// Reads the projection endpoint (which already contains real history) and
+// renders proof that the rule has actually fired on a real harvest event.
+// Renders nothing if no harvest history exists.
+
+type HistoryEntry = {
+  date: string;
+  type: 'HARVEST_PAYMENT' | 'WAGE_PAID';
+  amountKobo: number;
+  narrative: string;
+  liberationKobo: number;
+};
+
+function formatRelativeDate(iso: string): string {
+  const target = new Date(iso);
+  const now = new Date();
+  const days = Math.floor((now.getTime() - target.getTime()) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) {
+    const weeks = Math.round(days / 7);
+    return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+  }
+  if (days < 365) {
+    const months = Math.round(days / 30);
+    return months === 1 ? '1 month ago' : `${months} months ago`;
+  }
+  return target.toLocaleDateString('en-NG', { year: 'numeric', month: 'short' });
+}
+
+function LastAppliedCallout() {
+  const [entry, setEntry] = useState<HistoryEntry | null>(null);
+  const [split, setSplit] = useState<{ workingPct: number; billsPct: number; nextSeasonPct: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/demo/replay/projection').then((res) => {
+      if (cancelled) return;
+      const history: HistoryEntry[] = res.data?.history ?? [];
+      const lastHarvest = [...history]
+        .filter((h) => h.type === 'HARVEST_PAYMENT')
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+      if (lastHarvest) setEntry(lastHarvest);
+      const facts = res.data?.facts;
+      if (facts?.splitRule) setSplit(facts.splitRule);
+    }).catch(() => {
+      // silent fail — callout just doesn't render
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!entry || !split) return null;
+
+  const workingKobo = Math.floor((entry.amountKobo * split.workingPct) / 100);
+  const billsKobo = Math.floor((entry.amountKobo * split.billsPct) / 100);
+  const nextSeasonKobo = Math.floor((entry.amountKobo * split.nextSeasonPct) / 100);
+
+  return (
+    <div
+      className="rounded-2xl p-5"
+      style={{
+        background: 'hsl(var(--leaf-500, 142 71% 45%) / 0.06)',
+        border: '1px solid hsl(var(--leaf-500, 142 71% 45%) / 0.25)',
+      }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-leaf-500 flex-shrink-0" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-leaf-500">
+            Last applied · {formatRelativeDate(entry.date)}
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {formatNaira(entry.amountKobo, { compact: true })} routed via Squad
+        </p>
+      </div>
+      <p className="text-sm text-foreground mb-3">{entry.narrative}</p>
+      {/* Mini stacked bar showing how this sale was routed */}
+      <div className="flex h-2 w-full rounded-full overflow-hidden gap-px mb-2">
+        <div className="bg-leaf-500" style={{ width: `${split.workingPct}%` }} />
+        <div className="bg-amber-400" style={{ width: `${split.billsPct}%` }} />
+        <div className="bg-sky-400" style={{ width: `${split.nextSeasonPct}%` }} />
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <span>
+          <span className="font-semibold text-foreground tabular-nums">{split.workingPct}%</span> Working ·{' '}
+          <span className="tabular-nums">{formatNaira(workingKobo, { compact: true })}</span>
+        </span>
+        <span>
+          <span className="font-semibold text-foreground tabular-nums">{split.billsPct}%</span> Bills ·{' '}
+          <span className="tabular-nums">{formatNaira(billsKobo, { compact: true })}</span>
+        </span>
+        <span>
+          <span className="font-semibold text-foreground tabular-nums">{split.nextSeasonPct}%</span> Next Season ·{' '}
+          <span className="tabular-nums">{formatNaira(nextSeasonKobo, { compact: true })}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SplitRules() {
@@ -447,6 +551,9 @@ export default function SplitRules() {
           How your harvest payment is divided across three buckets.
         </p>
       </div>
+
+      {/* Last applied — proof this rule fires on real harvest events */}
+      <LastAppliedCallout />
 
       {/* §1 — Current rule visualizer */}
       <Card>

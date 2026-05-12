@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth, requireRole } from '../middleware/auth';
+import {AuthRequest, requireAuth, requireRole} from '../middleware/auth';
 import { prisma } from '../lib/prisma';
+
 
 const router = Router();
 
@@ -31,6 +32,9 @@ router.post('/', requireAuth, requireRole('LABOURER'), async (req: AuthRequest, 
     // Cap: 50% of total earned, max ₦5,000 (500_000 kobo)
     const cap = Math.min(Number(labourer.totalEarnedKobo) * 0.5, 500_000);
     const approvedKobo = Math.min(requestedKobo, cap);
+    const feePct = 2; // 2% flat fee on wage advances
+    const feeKobo = Math.floor(approvedKobo * feePct / 100);
+    const totalRepayable = approvedKobo + feeKobo;
 
     if (approvedKobo < 50_000) {
       return res.status(400).json({ error: 'Minimum advance is ₦500' });

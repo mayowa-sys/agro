@@ -19,6 +19,10 @@ export function WageAdvanceBanner({ onSuccess }: Props) {
 
   async function handleRequest() {
     const kobo = Math.round(parseFloat(amount) * 100)
+    if (kobo > 500000) {
+      setError('Maximum advance is ₦5,000');
+      return;
+    }
     if (!kobo || kobo < 50000) { setError('Minimum advance is ₦500'); return }
     setLoading(true); setError('')
     try {
@@ -78,7 +82,7 @@ export function WageAdvanceBanner({ onSuccess }: Props) {
                 Request advance
               </h2>
               <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                Up to ₦5,000 · deducted automatically from your next wage payment
+                Max ₦5,000 (incl. 2% fee) · repaid from next wage
               </p>
             </div>
 

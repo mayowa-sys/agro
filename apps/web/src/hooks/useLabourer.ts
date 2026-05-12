@@ -2,16 +2,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
 export const useLabourerDashboard = () =>
-  useQuery({
-    queryKey: ['labourer', 'dashboard'],
-    queryFn: () => api.get('/labourers/me/dashboard').then(r => r.data),
-  })
+    useQuery({
+      queryKey: ['labourer', 'dashboard'],
+      queryFn: () => api.get('/labourers/me/dashboard').then(r => r.data),
+      refetchInterval: 4_000
+    });
 
 export const useLabourerGigs = () =>
-  useQuery({
-    queryKey: ['labourer', 'gigs'],
-    queryFn: () => api.get('/gigs/me').then(r => r.data),
-  })
+    useQuery({
+      queryKey: ['labourer', 'gigs'],
+      queryFn: () => api.get('/gigs/me').then(r => r.data),
+      refetchInterval: 4_000,
+    });
 
 export const useOnboardLabourer = () => {
   const qc = useQueryClient()

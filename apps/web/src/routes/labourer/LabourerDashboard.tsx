@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Hammer, CheckCircle2, Clock, Star, Wallet, X, Briefcase,
   MapPin, TrendingUp, Sparkles, ArrowRight, ChevronRight,
+  Globe, ChevronDown, Check,
 } from 'lucide-react'
 import {
   useLabourerDashboard, useLabourerGigs,
@@ -94,7 +95,7 @@ function ConfirmDoneDialog({ gigId, jobTitle, onClose }: {
             style={{ background: CLAY_LIGHT }}>
             <CheckCircle2 className="h-8 w-8" style={{ color: CLAY }} />
           </div>
-          <p className="font-serif text-2xl" style={{ color: 'hsl(var(--foreground))' }}>Done!</p>
+          <p className="font-serif text-xl sm:text-2xl" style={{ color: 'hsl(var(--foreground))' }}>Done!</p>
           <p className="mt-2 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
             Your wage will be sent once both sides confirm.
           </p>
@@ -144,7 +145,7 @@ function AcceptJobDialog({ job, onClose }: { job: any; onClose: () => void }) {
             style={{ background: CLAY_LIGHT }}>
             <CheckCircle2 className="h-8 w-8" style={{ color: CLAY }} />
           </div>
-          <p className="font-serif text-2xl" style={{ color: 'hsl(var(--foreground))' }}>Accepted</p>
+          <p className="font-serif text-xl sm:text-2xl" style={{ color: 'hsl(var(--foreground))' }}>Accepted</p>
           <p className="mt-2 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
             It will appear in your upcoming gigs.
           </p>
@@ -219,6 +220,89 @@ function Skeleton() {
   )
 }
 
+// ─── Language picker ─────────────────────────────────────────────────────────
+
+const LANG_LABELS: Record<string, { full: string; native: string }> = {
+  EN:     { full: 'English',  native: 'English' },
+  PIDGIN: { full: 'Pidgin',   native: 'Pidgin' },
+  HAUSA:  { full: 'Hausa',    native: 'Hausa' },
+  YORUBA: { full: 'Yoruba',   native: 'Yorùbá' },
+  IGBO:   { full: 'Igbo',     native: 'Igbo' },
+}
+
+function LanguagePicker({ value, onChange }: { value: string; onChange: (code: any) => void }) {
+  const [open, setOpen] = useState(false)
+  const current = LANG_LABELS[value] ?? LANG_LABELS.EN
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors hover:bg-muted"
+        style={{
+          background: '#fff',
+          border: `0.5px solid ${CLAY_BORDER}`,
+          color: CLAY_DEEP,
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <Globe className="h-3.5 w-3.5" style={{ color: CLAY }} />
+        <span>{current.native}</span>
+        <ChevronDown className="h-3.5 w-3.5 opacity-60" style={{ color: CLAY_DEEP }} />
+      </button>
+
+      {open && (
+        <>
+          {/* Click-away backdrop */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+          />
+          {/* Menu */}
+          <div
+            className="absolute right-0 z-50 mt-2 min-w-[160px] overflow-hidden rounded-xl shadow-lg"
+            style={{
+              background: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              backdropFilter: 'blur(8px)',
+            }}
+            role="listbox"
+          >
+            {(['EN', 'PIDGIN', 'HAUSA', 'YORUBA', 'IGBO'] as const).map(code => {
+              const isActive = value === code
+              return (
+                <button
+                  key={code}
+                  onClick={() => { onChange(code); setOpen(false) }}
+                  className="flex w-full items-center justify-between px-3.5 py-2.5 text-sm transition-colors hover:bg-muted"
+                  style={{
+                    color: isActive ? CLAY_DEEP : 'hsl(var(--foreground))',
+                    fontWeight: isActive ? 600 : 400,
+                    background: isActive ? CLAY_LIGHT : 'transparent',
+                  }}
+                  role="option"
+                  aria-selected={isActive}
+                >
+                  <div className="flex flex-col items-start">
+                    <span>{LANG_LABELS[code].native}</span>
+                    {LANG_LABELS[code].full !== LANG_LABELS[code].native && (
+                      <span className="text-[10px] opacity-60" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        {LANG_LABELS[code].full}
+                      </span>
+                    )}
+                  </div>
+                  {isActive && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: CLAY }} />}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function LabourerDashboard() {
@@ -249,11 +333,11 @@ export default function LabourerDashboard() {
   const canRequestAdvance = (labourer?.reputationTier ?? 0) >= 3 && !outstandingAdvance
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 lg:py-12 space-y-10">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-10 lg:py-12 space-y-6 sm:space-y-10">
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
       <section
-        className="relative overflow-hidden rounded-3xl p-8 lg:p-10"
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 lg:p-10"
         style={{
           background: `linear-gradient(135deg, ${CLAY_LIGHT} 0%, hsl(var(--card)) 70%)`,
           border: `1px solid ${CLAY_BORDER}`,
@@ -264,17 +348,22 @@ export default function LabourerDashboard() {
           <Hammer className="h-48 w-48" style={{ color: CLAY }} />
         </div>
 
-        <div className="relative grid gap-8 md:grid-cols-[1.3fr_1fr] md:items-center">
+        {/* Language picker — top-right on desktop, top of card on mobile */}
+        <div className="relative mb-5 flex justify-start sm:absolute sm:top-6 sm:right-6 sm:mb-0 sm:justify-end z-10">
+          <LanguagePicker value={lang} onChange={setLanguage} />
+        </div>
+
+        <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.3fr_1fr] md:items-center">
 
           {/* Savings pot — emotional centerpiece */}
           <div>
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-2 sm:mb-3 flex items-center gap-2">
               <Wallet className="h-3.5 w-3.5" style={{ color: CLAY }} />
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: CLAY }}>
                 {LABOURER_STRINGS['dashboard.savingsPot'][lang]}
               </p>
             </div>
-            <p className="font-serif text-5xl lg:text-6xl leading-none tracking-tight"
+            <p className="font-serif text-4xl sm:text-5xl lg:text-6xl leading-none tracking-tight"
               style={{ color: 'hsl(var(--foreground))' }}>
               {formatNaira(savingsAccount?.balanceKobo ?? 0)}
             </p>
@@ -285,27 +374,9 @@ export default function LabourerDashboard() {
             )}
           </div>
 
-          {/* Language toggle */}
-          <div className="flex items-center gap-1.5">
-            {(['EN', 'PIDGIN', 'HAUSA', 'YORUBA', 'IGBO'] as const).map(code => (
-                <button
-                    key={code}
-                    onClick={() => setLanguage(code)}
-                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-all ${
-                        lang === code
-                            ? 'text-white shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground border border-border'
-                    }`}
-                    style={lang === code ? { background: CLAY } : {}}
-                >
-                  {code}
-                </button>
-            ))}
-          </div>
-
           {/* Profile compact */}
-          <div className="md:border-l md:pl-8" style={{ borderColor: CLAY_BORDER }}>
-            <p className="font-serif text-2xl leading-tight"
+          <div className="border-t pt-6 md:border-t-0 md:border-l md:pt-0 md:pl-8" style={{ borderColor: CLAY_BORDER }}>
+            <p className="font-serif text-xl sm:text-2xl leading-tight"
               style={{ color: 'hsl(var(--foreground))' }}>
               {labourer?.name ?? 'Labourer'}
             </p>
@@ -369,12 +440,12 @@ export default function LabourerDashboard() {
           className="overflow-hidden rounded-2xl"
           style={{ background: CLAY, color: '#fff' }}
         >
-          <div className="flex items-center justify-between gap-4 p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 sm:p-6">
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-80">
                 Action needed
               </p>
-              <p className="mt-1.5 font-serif text-xl leading-tight">
+              <p className="mt-1.5 font-serif text-lg sm:text-xl leading-tight">
                 Confirm "{actionGig.job?.title}" complete
               </p>
               <p className="mt-1 text-sm opacity-85">
@@ -384,7 +455,7 @@ export default function LabourerDashboard() {
               </p>
             </div>
             <button
-              className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
+              className="shrink-0 w-full sm:w-auto rounded-xl bg-white px-5 py-3 text-sm font-semibold transition-opacity hover:opacity-90"
               style={{ color: CLAY }}
               onClick={() => setConfirmGig(actionGig)}
             >
@@ -419,7 +490,7 @@ export default function LabourerDashboard() {
       {/* ── NEARBY JOBS ─────────────────────────────────────────── */}
       <section>
         <div className="mb-5 flex items-end justify-between">
-          <h2 className="font-serif text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
+          <h2 className="font-serif text-xl sm:text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
             {LABOURER_STRINGS['nearby.title'][lang]}
           </h2>
           <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -445,13 +516,13 @@ export default function LabourerDashboard() {
                 <button
                   key={job.jobId}
                   onClick={() => setMatchJob(job)}
-                  className="group block w-full rounded-2xl p-6 text-left transition-all hover:shadow-md"
+                  className="group block w-full rounded-2xl p-4 sm:p-6 text-left transition-all hover:shadow-md"
                   style={{
                     background: 'hsl(var(--card))',
                     border: `1px solid ${isTop ? CLAY_BORDER : 'hsl(var(--border))'}`,
                   }}
                 >
-                  <div className="flex items-start gap-5">
+                  <div className="flex items-start gap-3 sm:gap-5">
                     {/* match score circle */}
                     <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
                       style={{ background: CLAY_LIGHT }}>
@@ -522,7 +593,7 @@ export default function LabourerDashboard() {
       {/* ── UPCOMING (non-action) ───────────────────────────────── */}
       {otherUpcoming.length > 0 && (
         <section>
-          <h2 className="mb-5 font-serif text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
+          <h2 className="mb-4 sm:mb-5 font-serif text-xl sm:text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
             Upcoming gigs
           </h2>
           <div className="space-y-2">
@@ -557,7 +628,7 @@ export default function LabourerDashboard() {
       {completedGigs.length > 0 && (
         <section>
           <div className="mb-5 flex items-end justify-between">
-            <h2 className="font-serif text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
+            <h2 className="font-serif text-xl sm:text-2xl" style={{ color: 'hsl(var(--foreground))' }}>
               Recent gigs
             </h2>
             <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>

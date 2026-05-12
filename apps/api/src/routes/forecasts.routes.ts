@@ -73,9 +73,12 @@ forecastsRouter.get('/me/projected-balance', requireAuth, requireRole('FARMER'),
       byDay.set(dayOffset, (byDay.get(dayOffset) ?? 0n) + delta);
     }
 
-    // Start from current total balance across all farmer accounts
+    // Start from current WORKING balance only. Bills + NextSeason are ring-fenced
+    // and shouldn't absorb daily cash-flow shortfalls — this matches the gap math
+    // in _detect_cash_gaps which also uses Working only.
     const accounts = await prisma.virtualAccount.findMany({ where: { farmerId: farmer.id } });
-    let running = accounts.reduce((sum, a) => sum + (a.cachedBalance ?? 0n), 0n);
+    const workingVA = accounts.find(a => a.purpose === 'WORKING');
+    let running = workingVA?.cachedBalance ?? 0n;
     const series: Array<{ day: number; date: string; balanceKobo: string }> = [];
     for (let d = 0; d <= horizonDays; d++) {
       running += byDay.get(d) ?? 0n;
