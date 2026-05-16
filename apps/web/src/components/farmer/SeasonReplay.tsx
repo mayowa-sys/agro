@@ -160,7 +160,9 @@ function LoadingScene() {
 }
 
 function Act1Forecast({ data }: { data: Projection }) {
-  const gapDisplay = formatNaira(data.facts.creditPrincipalKobo + data.facts.creditFeeKobo)
+  // Honest framing: we narrate the credit Tunde took to bridge the predicted
+  // gap, not the gap depth itself (the gap is visible on the Forecast page).
+  const creditDisplay = formatNaira(data.facts.creditPrincipalKobo)
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.6 }} className="space-y-8">
       <div className="text-center">
@@ -180,7 +182,7 @@ function Act1Forecast({ data }: { data: Projection }) {
       </div>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.5 }} className="flex items-center justify-center gap-2 text-center">
         <AlertTriangle size={14} style={{ color: ORANGE }} />
-        <p className="text-sm" style={{ color: INK_DIM }}>April: AI predicted a <span style={{ color: ORANGE, fontWeight: 600 }}>{gapDisplay} cash gap</span> before harvest</p>
+        <p className="text-sm" style={{ color: INK_DIM }}>May: Forecast flagged a gap before October harvest · Tunde took <span style={{ color: ORANGE, fontWeight: 600 }}>{creditDisplay} input credit</span> to bridge it</p>
       </motion.div>
     </motion.div>
   )
@@ -243,7 +245,7 @@ function Act3Labour({ data }: { data: Projection }) {
               <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: CLAY }}>{data.facts.labourerName} accepted</p>
               <p className="text-sm mb-2" style={{ color: INK }}>Tier {data.facts.labourerTier} labourer · 5.2km away · 84% skill match</p>
               <div className="flex flex-wrap gap-1.5">
-                {['harvest', 'yam'].map((s) => (
+                {['harvest', 'weeding'].map((s) => (
                   <span key={s} className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: 'rgba(160, 82, 45, 0.15)', color: CLAY }}>{s}</span>
                 ))}
               </div>

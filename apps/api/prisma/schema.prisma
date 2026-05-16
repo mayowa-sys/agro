@@ -196,7 +196,14 @@ model ForecastEvent {
   confidence     Float
   reasonsJson    Json
 
+  // Coverage tracking — when input credit / factoring covers an expense
+  // event, the responsible credit's id and the kobo covered are stored
+  // here. Gap math subtracts (expectedAmount - coveredKobo) when walking
+  // the balance series.
+  coveredByCreditId  String?
+  coveredKobo        BigInt?
   @@index([forecastId, expectedDate])
+  @@index([coveredByCreditId])
 }
 
 model CashGap {
@@ -216,8 +223,18 @@ model Supplier {
   contactPhone       String
   squadAccountNumber String
   region             String
+  category           SupplierCategory @default(FERTILIZER)
+  description        String?
   active             Boolean         @default(true)
   inputDeferrals     InputDeferral[]
+}
+
+enum SupplierCategory {
+  FERTILIZER
+  SEEDS
+  AGROCHEMICALS
+  EQUIPMENT
+  FEED
 }
 
 model InputDeferral {

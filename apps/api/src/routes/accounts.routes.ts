@@ -78,8 +78,10 @@ accountsRouter.get('/credit-score', async (req: AuthRequest, res, next) => {
     let cs = await prisma.creditScore.findUnique({ where: { farmerId: farmer.id } });
     if (!cs) {
       const { recomputeCreditScore } = await import('../services/credit-score.service');
-      cs = await recomputeCreditScore(farmer.id);
+      await recomputeCreditScore(farmer.id);
+      cs = await prisma.creditScore.findUnique({ where: { farmerId: farmer.id } });
     }
+    if (!cs) return next(new AppError(500, 'Credit score unavailable'));
 
     res.json({
       score: cs.score,

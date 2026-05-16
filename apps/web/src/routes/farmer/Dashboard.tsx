@@ -155,26 +155,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* ── ALERTS ───────────────────────────────────────────── */}
-      {nextCashGap && (
-        <button
-          onClick={() => nav('/app/forecast')}
-          className="flex w-full items-center gap-4 rounded-2xl px-6 py-5 text-left transition-opacity hover:opacity-95"
-          style={{ background: GOLD, color: '#fff' }}
-        >
-          <AlertTriangle className="h-5 w-5 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-80">
-              Cash gap ahead
-            </p>
-            <p className="mt-1 font-serif text-lg leading-tight">
-              {formatNairaFull(Math.abs(Number(nextCashGap.amountKobo)))} short {daysUntil(nextCashGap.date)}
-            </p>
-          </div>
-          <ArrowRight className="h-5 w-5 shrink-0" />
-        </button>
-      )}
-
       {/* ── ACCOUNTS GRID ────────────────────────────────────── */}
       <section>
         <div className="mb-5 flex items-end justify-between">

@@ -23,10 +23,17 @@ const SCENARIOS = [
 export function StressTestConsole({ open, onClose, onRun, onReset, isLoading, activeScenario, result }: Props) {
   const active = SCENARIOS.find((s) => s.id === activeScenario);
 
+  // AI stress-test events use `amount`; live forecast events use `expectedAmount`
   const impactIncome = result
     ? (result.events ?? [])
         .filter((e: any) => e.type === 'INCOME')
-        .reduce((s: number, e: any) => s + Number(e.expectedAmount ?? e.amount ?? 0), 0)
+        .reduce((s: number, e: any) => s + Number(e.amount ?? e.expectedAmount ?? 0), 0)
+    : null;
+
+  const impactGaps = result?.cash_gaps ?? [];
+  const worstGap = impactGaps.length > 0
+    ? impactGaps.reduce((a: any, b: any) =>
+        Number(b.gap_amount_kobo ?? 0) > Number(a.gap_amount_kobo ?? 0) ? b : a)
     : null;
 
   return (
@@ -108,15 +115,32 @@ export function StressTestConsole({ open, onClose, onRun, onReset, isLoading, ac
                 </p>
               </div>
               {impactIncome !== null && (
-                <div>
-                  <p className="text-xs text-muted-foreground font-sans uppercase tracking-widest mb-0.5">Expected 90-day income</p>
-                  <p className="font-display text-2xl text-foreground">
-                    {formatNaira(impactIncome, { compact: true })}
-                  </p>
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-sans uppercase tracking-widest mb-0.5">
+                      Expected income
+                    </p>
+                    <p className="font-display text-xl text-foreground">
+                      {formatNaira(impactIncome, { compact: true })}
+                    </p>
+                  </div>
+                  {worstGap && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-sans uppercase tracking-widest mb-0.5">
+                        Predicted gap
+                      </p>
+                      <p className="font-display text-xl" style={{ color: 'rgb(249,115,22)' }}>
+                        {formatNaira(Number(worstGap.gap_amount_kobo ?? 0), { compact: true })}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               <p className="text-sm text-foreground/80 font-sans leading-relaxed">
-                Cash gap risk is elevated. New shortfall windows may appear on your calendar.
+                {activeScenario === 'drought' && 'Crop yield reduced by ~45%. Income significantly lower.'}
+                {activeScenario === 'price_crash' && 'Market prices down 30%. Harvest income reduced.'}
+                {activeScenario === 'late_buyer' && 'Payment delayed 6 weeks. Gap window extended significantly.'}
+                {activeScenario === 'late_harvest_3wk' && 'Harvest arrives 3 weeks late. Gap window extended.'}
               </p>
               <p className="text-xs text-muted-foreground font-sans">
                 Recommended: request an input deferral or sell a portion of your harvest early.

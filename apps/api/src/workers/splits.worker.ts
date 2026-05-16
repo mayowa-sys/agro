@@ -45,12 +45,13 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
     const feeKobo = credit.agroFee ?? (credit.amount * BigInt(feePct) / 100n);
     const totalDue = credit.amount + feeKobo;
     if (remainingAmount >= totalDue) {
-      await squadClient.initiateTransfer({
-        amount: Number(totalDue) / 100,
-        account_number: workingAccount.squadAccountNumber,
-        bank_code: '057',
-        currency_id: 'NGN',
-        remark: `AGRO credit repayment: ${credit.id}`,
+      // Credit repayment: WORKING VA → AGRO float. Internal allocation,
+      // both accounts are AGRO-owned, no real outbound transfer needed.
+      // TODO(squad-live): if AGRO operates separate Squad wallets, replace
+      //   with /payout/transfer to the float wallet's NUBAN.
+      await prisma.virtualAccount.update({
+        where: { id: workingAccount.id },
+        data: { cachedBalance: { decrement: totalDue } },
       });
 
       await prisma.inputDeferral.update({
@@ -67,16 +68,25 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
     }
   }
 
-  // ── Liberation: middleman discount avoided = 30% of full harvest inflow ──
-  const middlemanAvoided = BigInt(Math.round(Number(harvestTotal) * 0.30));
-  await prisma.liberationLog.create({
-    data: {
-      farmerId,
-      source: 'MIDDLEMAN_DISCOUNT_AVOIDED',
-      counterfactualLossKobo: middlemanAvoided,
-      methodologyNote: `Harvest inflow: ₦${Number(harvestTotal / 100n)}. Counterfactual middleman discount estimated at 30% based on Babban Gona field observations and CGAP smallholder reports — ₦${Number(middlemanAvoided / 100n)} discount avoided. See /methodology.`,
-    },
+  // ── Liberation: middleman discount avoided = 30% of harvest inflow ─────
+  // ONLY fires when the originating transaction is a genuine HARVEST_PAYMENT.
+  // Other inflows (odd-job income, manual adjustments) route through splits
+  // but should not inflate the liberation counter.
+  const originatingTxn = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    select: { source: true },
   });
+  if (originatingTxn?.source === 'HARVEST_PAYMENT') {
+    const middlemanAvoided = BigInt(Math.round(Number(harvestTotal) * 0.30));
+    await prisma.liberationLog.create({
+      data: {
+        farmerId,
+        source: 'MIDDLEMAN_DISCOUNT_AVOIDED',
+        counterfactualLossKobo: middlemanAvoided,
+        methodologyNote: `Harvest inflow: ₦${Number(harvestTotal / 100n)}. Counterfactual middleman discount estimated at 30% based on three peer-reviewed Nigerian agri value-chain studies (Kwara soybean 33.14%, South-South yam 42.1%, Gombe yam 28.28%) — ₦${Number(middlemanAvoided / 100n)} discount avoided. See /methodology.`,
+      },
+    });
+  }
 
   // Use remaining amount for splits
   total = remainingAmount;
@@ -91,30 +101,19 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
   const nextSeasonAmount = (total * BigInt(rule.nextSeasonPct)) / 100n;
   const workingRemainder = total - billsAmount - nextSeasonAmount;
 
-  // Transfer to Bills
+  // Split to Bills: WORKING → Bills VA. Both AGRO-owned, internal move.
+  // TODO(squad-live): production should call /payout/transfer between the
+  //   two GTBank wallets backing these VAs.
   if (billsAmount > 0n) {
-    await squadClient.initiateTransfer({
-      amount: Number(billsAmount) / 100,
-      account_number: billsAccount.squadAccountNumber,
-      bank_code: '058',
-      currency_id: 'NGN',
-      remark: `Agro split: BILLS - farmer ${farmerId}`,
-    });
     await prisma.virtualAccount.update({
       where: { id: billsAccount.id },
       data: { cachedBalance: { increment: billsAmount } },
     });
   }
 
-  // Transfer to Next Season
+  // Split to Next Season: WORKING → NextSeason VA. Internal move.
+  // TODO(squad-live): same as Bills above.
   if (nextSeasonAmount > 0n) {
-    await squadClient.initiateTransfer({
-      amount: Number(nextSeasonAmount) / 100,
-      account_number: nextSeasonAccount.squadAccountNumber,
-      bank_code: '058',
-      currency_id: 'NGN',
-      remark: `Agro split: NEXT_SEASON - farmer ${farmerId}`,
-    });
     await prisma.virtualAccount.update({
       where: { id: nextSeasonAccount.id },
       data: { cachedBalance: { increment: nextSeasonAmount } },
@@ -127,10 +126,12 @@ const worker = new Worker('splits', async (job: Job<SplitJobData>) => {
     data: { cachedBalance: { increment: workingRemainder } },
   });
 
-  // Mark transaction processed
+  // Mark transaction processed. Don't overwrite source — the webhook
+  // handler already set it correctly. Forcing HARVEST_PAYMENT here used to
+  // make every routed inflow look like a harvest after the fact.
   await prisma.transaction.update({
     where: { id: transactionId },
-    data: { processed: true, source: 'HARVEST_PAYMENT' },
+    data: { processed: true },
   });
 
   await prisma.auditLog.create({

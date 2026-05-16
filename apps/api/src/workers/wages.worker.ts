@@ -92,17 +92,25 @@ export const wagesWorker = new Worker(
                 console.error(`[WAGES WORKER] advance deduction: ${actualDeduct} kobo, remaining payable: ${payableKobo}`);
             }
 
-            // 5. Squad transfer
+            // 5. Wage allocation: farmer's WORKING → labourer's LABOUR_SAVINGS VA.
+            // Both VAs are AGRO-owned, so this is an internal allocation, not
+            // a real outbound bank transfer. In production, paying out to the
+            // labourer's external bank account would require collecting their
+            // NUBAN during onboarding (currently not in the Labourer schema).
+            //
+            // TODO(squad-live): when Labourer model carries bankAccountNumber
+            //   + bankCode + verified accountName, fire /payout/transfer here.
             const amountNaira = Number(payableKobo) / 100;
-            console.error(`[WAGES WORKER] initiating transfer: ${amountNaira} NGN`);
-            const transferResult = await squadClient.initiateTransfer({
-                amount: amountNaira,
-                account_number: labourerSavingsVA.squadAccountNumber,
-                bank_code: '058',
-                currency_id: 'NGN',
-                remark: `Agro wage gig ${gigId}`,
+            console.error(`[WAGES WORKER] allocating wage: ${amountNaira} NGN (internal)`);
+            await prisma.virtualAccount.update({
+                where: { id: labourerSavingsVA.id },
+                data: { cachedBalance: { increment: payableKobo } },
             });
-            console.error(`[WAGES WORKER] transfer result: ${JSON.stringify(transferResult)}`);
+            const transferResult = {
+                transaction_reference: `internal_wage_${gigId}`,
+                status: 'SUCCESS' as const,
+            };
+            console.error(`[WAGES WORKER] wage allocation result: ${JSON.stringify(transferResult)}`);
 
             // 5. Success
             await prisma.wageTransfer.update({

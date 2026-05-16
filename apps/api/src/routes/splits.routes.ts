@@ -70,40 +70,99 @@ splitsRouter.put('/me', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /split-rules/me/suggest — AI suggestion (stub until §4 is done)
+// POST /split-rules/me/suggest — forecast-driven recommendation
+//
+// Simulates the farmer's next 90 days under the current split rule and a
+// constrained grid of candidate rules. Returns the best candidate (if any)
+// that materially reduces projected pot shortfalls.
+//
+// Honest about three outcomes:
+//   - OPTIMAL:        current rule is fine, no adjustment recommended
+//   - ADJUST:         a different rule meaningfully improves coverage
+//   - CREDIT_NEEDED:  shortfall arrives before harvest income, splits can't fix
 splitsRouter.post('/me/suggest', async (req: AuthRequest, res, next) => {
   try {
     const farmer = await prisma.farmer.findUnique({ where: { userId: req.user!.id } });
     if (!farmer) return next(new AppError(404, 'Farmer profile not found'));
 
-    // Stub: call AI service if available, otherwise return sensible default
-    const aiUrl = process.env.AI_SERVICE_URL;
-    if (aiUrl) {
-      try {
-        const axios = (await import('axios')).default;
-        const current = await prisma.splitRule.findUnique({ where: { farmerId: farmer.id } });
-        const { data } = await axios.post(
-          `${aiUrl}/split/suggest`,
-          { farmer_id: farmer.id, current_split: current },
-          { headers: { Authorization: `Bearer ${process.env.AI_SERVICE_TOKEN}` }, timeout: 5000 }
-        );
-        return res.json({ suggestion: data, source: 'ai' });
-      } catch {
-        // AI service not up yet — fall through to default
-      }
+    // Current rule (auto-default if absent)
+    let rule = await prisma.splitRule.findUnique({ where: { farmerId: farmer.id } });
+    if (!rule) {
+      rule = await prisma.splitRule.create({
+        data: { farmerId: farmer.id, workingPct: 60, billsPct: 25, nextSeasonPct: 15 },
+      });
     }
 
-    // Default suggestion based on crop type
-    const suggestions: Record<string, { workingPct: number; billsPct: number; nextSeasonPct: number; reason: string }> = {
-      YAM:     { workingPct: 55, billsPct: 25, nextSeasonPct: 20, reason: 'Yam has long gaps between harvests — save more for next season.' },
-      CASSAVA: { workingPct: 60, billsPct: 20, nextSeasonPct: 20, reason: 'Cassava has two cycles — balanced split works well.' },
-      TOMATO:  { workingPct: 65, billsPct: 25, nextSeasonPct: 10, reason: 'Tomato cash flow is frequent — keep more working.' },
-      MAIZE:   { workingPct: 55, billsPct: 30, nextSeasonPct: 15, reason: 'Maize has a single spike — buffer bills more.' },
-      RICE:    { workingPct: 55, billsPct: 25, nextSeasonPct: 20, reason: 'Rice input costs are high — save for next season.' },
-      COCOA:   { workingPct: 50, billsPct: 25, nextSeasonPct: 25, reason: 'Cocoa has two big paydays — maximise next-season savings.' },
-    };
+    // Pull the freshest forecast's events
+    const freshestForecast = await prisma.forecast.findFirst({
+      where: { farmerId: farmer.id },
+      orderBy: { generatedAt: 'desc' },
+    });
 
-    const suggestion = suggestions[farmer.cropType] ?? { workingPct: 60, billsPct: 25, nextSeasonPct: 15, reason: 'Default balanced split.' };
-    res.json({ suggestion, source: 'default' });
+    const events = freshestForecast
+      ? await prisma.forecastEvent.findMany({
+          where: { forecastId: freshestForecast.id },
+          orderBy: { expectedDate: 'asc' },
+        })
+      : [];
+
+    // Current pot balances
+    const accounts = await prisma.virtualAccount.findMany({ where: { farmerId: farmer.id } });
+    const working    = accounts.find(a => a.purpose === 'WORKING');
+    const bills      = accounts.find(a => a.purpose === 'BILLS');
+    const nextSeason = accounts.find(a => a.purpose === 'NEXT_SEASON');
+
+    // Active deferrals to model auto-repayment correctly
+    const activeDeferrals = await prisma.inputDeferral.findMany({
+      where: { farmerId: farmer.id, status: { in: ['DISBURSED', 'ACTIVE', 'PENDING'] } },
+    });
+
+    const { adviseSplit } = await import('../services/splits.advisor');
+
+    const result = adviseSplit({
+      current: {
+        workingPct: rule.workingPct,
+        billsPct: rule.billsPct,
+        nextSeasonPct: rule.nextSeasonPct,
+      },
+      events: events.map(e => ({
+        expectedDate: e.expectedDate,
+        expectedAmount: e.expectedAmount,
+        type: e.type as 'INCOME' | 'EXPENSE',
+        category: e.category,
+      })),
+      balances: {
+        working:    working?.cachedBalance ?? 0n,
+        bills:      bills?.cachedBalance ?? 0n,
+        nextSeason: nextSeason?.cachedBalance ?? 0n,
+      },
+      activeDeferrals: activeDeferrals
+        .filter(d => d.expectedRepayBy !== null)
+        .map(d => ({
+          amount: d.amount,
+          agroFee: d.agroFee,
+          expectedRepayBy: d.expectedRepayBy!,
+        })),
+    });
+
+    // Shape the response so the existing hook keeps working: flat
+    // workingPct/billsPct/nextSeasonPct/explanation at the top of `suggestion`.
+    // Recommended rule defaults to current when status != ADJUST so the
+    // "Apply suggestion" button is safe in every state.
+    const effective = result.recommended ?? result.current;
+    res.json({
+      suggestion: {
+        workingPct: effective.workingPct,
+        billsPct: effective.billsPct,
+        nextSeasonPct: effective.nextSeasonPct,
+        explanation: result.explanation,
+        status: result.status,
+        drivingEvent: result.drivingEvent,
+        simulation: result.simulation,
+        currentRule: result.current,
+        recommendedRule: result.recommended,
+      },
+      source: 'advisor',
+    });
   } catch (err) { next(err); }
 });

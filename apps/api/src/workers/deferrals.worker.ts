@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import { bullRedis } from '../lib/redis';
 import { prisma } from '../lib/prisma';
 import { squadClient } from '../squad/squad.client';
+import { BANK_CODES } from '../squad/squad.banks';
 import { splitsQueue } from '../lib/queues';
 
 new Worker('deferrals', async (job) => {
@@ -25,26 +26,31 @@ new Worker('deferrals', async (job) => {
     const workingAccount = deferral.farmer.virtualAccounts.find(va => va.purpose === 'WORKING');
     if (!workingAccount) throw new Error(`No WORKING account for farmer ${deferral.farmerId}`);
 
+    // AGRO float → supplier (real outbound). Lookup confirms account name.
+    const supplierLookup = await squadClient.lookupAccount(
+      BANK_CODES.GTBANK,
+      deferral.supplier.squadAccountNumber,
+    );
+
     const transferResult = await squadClient.initiateTransfer({
-      amount: Number(deferral.amount) / 100,
+      amount: Number(deferral.amount), // kobo
       account_number: deferral.supplier.squadAccountNumber,
-      bank_code: '058',
+      account_name: supplierLookup.account_name,
+      bank_code: BANK_CODES.GTBANK,
       currency_id: 'NGN',
       remark: `Agro deferral disbursement: ${deferralId}`,
-    });
+    }, `defer_${deferralId}`);
 
-    const mandateResult = await squadClient.createMandate({
-      account_number: workingAccount.squadAccountNumber,
-      amount: Number(deferral.amount + deferral.agroFee) / 100,
-      remark: `Agro deferral repayment: ${deferralId}`,
-    });
+    // NOTE: Squad's public API does not expose a mandate/direct-debit
+    // endpoint. Auto-repayment is handled by the splits worker when the
+    // harvest inflow lands on the farmer's WORKING VA — see
+    // splits.worker.ts. We no longer create a Squad mandate here.
 
     await prisma.inputDeferral.update({
       where: { id: deferralId },
       data: {
         status: 'ACTIVE',
         disbursedAt: new Date(),
-        squadMandateId: mandateResult.mandate_id,
       },
     });
 
@@ -55,7 +61,6 @@ new Worker('deferrals', async (job) => {
         metadata: {
           deferralId,
           transferRef: transferResult.transaction_reference,
-          mandateId: mandateResult.mandate_id,
         },
       },
     });
@@ -87,9 +92,11 @@ new Worker('deferrals', async (job) => {
 
     const repayAmount = deferral.amount + deferral.agroFee;
 
-    if (deferral.squadMandateId) {
-      await squadClient.chargeMandate(deferral.squadMandateId, Number(repayAmount) / 100);
-    }
+    // NOTE: mandate charge removed. The splits worker collects repayment
+    // from the WORKING VA at harvest inflow. If this job fires manually
+    // (via /deferrals/:id/repay-now or webhook fallback), we only update
+    // the DB state and decrement balance — no Squad call needed because
+    // both source (WORKING VA) and destination (AGRO float) are AGRO-owned.
 
     await prisma.inputDeferral.update({
       where: { id: targetDeferralId },
@@ -114,7 +121,6 @@ new Worker('deferrals', async (job) => {
       },
     });
 
-    // Route remainder to splits after deferral repayment
     const remainder = (job.data.amount ? BigInt(job.data.amount) : 0n) - repayAmount;
     if (remainder > 100000n) {
       await splitsQueue.add('route', {

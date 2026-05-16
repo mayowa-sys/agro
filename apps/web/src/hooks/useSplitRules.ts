@@ -10,11 +10,36 @@ export interface SplitRule {
   updatedAt: string;
 }
 
+export type SuggestStatus = 'OPTIMAL' | 'ADJUST' | 'CREDIT_NEEDED' | 'NO_DATA';
+
+export interface PotSim {
+  pot: 'WORKING' | 'BILLS' | 'NEXT_SEASON';
+  startKobo: string;
+  endKobo: string;
+  inflowKobo: string;
+  outflowKobo: string;
+  minBalanceKobo: string;
+  shortfallKobo: string;
+}
+
 export interface SplitSuggestion {
   workingCapitalPct: number;
   billsPct: number;
   nextSeasonPct: number;
   explanation: string;
+  status?: SuggestStatus;
+  drivingEvent?: {
+    expectedDate: string;
+    category: string;
+    amountKobo: string;
+    pot: 'WORKING' | 'BILLS' | 'NEXT_SEASON';
+  } | null;
+  simulation?: {
+    currentRule: PotSim[];
+    recommendedRule: PotSim[] | null;
+    candidatesEvaluated: number;
+    horizonDays: number;
+  };
 }
 
 export function useSplitRule() {
@@ -43,9 +68,10 @@ export function useSplitSuggestion() {
             workingCapitalPct: s.workingPct ?? s.workingCapitalPct,
             billsPct: s.billsPct,
             nextSeasonPct: s.nextSeasonPct,
-            explanation:
-                s.explanation ??
-                `Based on your forecast, allocating ${s.workingPct ?? s.workingCapitalPct}% to working capital reduces your predicted cash gap to ${s.expectedGapDays ?? 0} days.`,
+            explanation: s.explanation ?? '',
+            status: s.status,
+            drivingEvent: s.drivingEvent,
+            simulation: s.simulation,
           };
         }),
     staleTime: 5 * 60 * 1000,

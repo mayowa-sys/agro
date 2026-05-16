@@ -143,9 +143,11 @@ export async function getFarmerDashboard(userId: string) {
     orderBy: { purpose: 'asc' },
   });
 
-  // Active deferrals
+  // Active deferrals. DISBURSED means money already moved to supplier and
+  // we're waiting on harvest auto-repay — this is the most relevant state
+  // for the farmer to see on their dashboard. ACTIVE is a legacy synonym.
   const activeDeferrals = await prisma.inputDeferral.findMany({
-    where: { farmerId: farmer.id, status: { in: ['PENDING', 'ACTIVE'] } },
+    where: { farmerId: farmer.id, status: { in: ['PENDING', 'ACTIVE', 'DISBURSED'] } },
     include: { supplier: { select: { name: true } } },
     orderBy: { expectedRepayBy: 'asc' },
     take: 5,
@@ -195,14 +197,16 @@ export async function getFarmerDashboard(userId: string) {
     };
   }
 
-  // Next forecast cash gap
-  const upcomingGap = await prisma.forecastEvent.findFirst({
+  // Next active cash gap. Reads from the CashGap table the gap-detection
+  // worker writes — same source the Forecast page consumes — so dashboard
+  // and forecast cannot disagree about whether a gap exists.
+  const upcomingGap = await prisma.cashGap.findFirst({
     where: {
-      forecast: { farmerId: farmer.id },
-      expectedDate: { gte: now },
-      expectedAmount: { lt: 0 },
+      farmerId: farmer.id,
+      status: 'ACTIVE',
+      endDate: { gte: now },
     },
-    orderBy: { expectedDate: 'asc' },
+    orderBy: { startDate: 'asc' },
   });
 
   return {
@@ -244,8 +248,9 @@ export async function getFarmerDashboard(userId: string) {
       allTime: sumLogs(allLogs),
     },
     nextCashGap: upcomingGap ? {
-      date: upcomingGap.expectedDate,
-      amountKobo: String(upcomingGap.expectedAmount),
+      startDate: upcomingGap.startDate,
+      endDate: upcomingGap.endDate,
+      amountKobo: String(upcomingGap.gapAmount),
     } : null,
   };
 }

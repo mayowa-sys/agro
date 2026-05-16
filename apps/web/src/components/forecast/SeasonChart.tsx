@@ -16,6 +16,7 @@ interface Props {
   cashGaps: CashGap[];
   horizonDays: number;
   onMarkerClick?: (date: Date, events: ForecastEvent[]) => void;
+  chartKey?: number; // increment to replay draw animation
 }
 
 const PADDING = { top: 32, right: 24, bottom: 40, left: 64 };
@@ -38,7 +39,7 @@ interface Marker {
   totalAmount: number;
 }
 
-export function SeasonChart({ series, events, cashGaps, horizonDays, onMarkerClick }: Props) {
+export function SeasonChart({ series, events, cashGaps, horizonDays, onMarkerClick, chartKey = 0 }: Props) {
   const today = useMemo(() => {
     const d = new Date();
     d.setUTCHours(0, 0, 0, 0);
@@ -130,6 +131,8 @@ export function SeasonChart({ series, events, cashGaps, horizonDays, onMarkerCli
         if (e.type === 'INCOME') groups.income.push(e);
         else if (e.category === 'INPUTS') groups.inputs.push(e);
         else if (e.category === 'LABOUR') groups.labour.push(e);
+        // REPAYMENT and large one-off household expenses get the orange diamond
+        else if (e.category === 'REPAYMENT') groups.special.push(e);
         else if (e.category === 'HOUSEHOLD' && Math.abs(e.amount) >= 3_000_000) groups.special.push(e);
       }
 
@@ -152,12 +155,12 @@ export function SeasonChart({ series, events, cashGaps, horizonDays, onMarkerCli
   const [animationKey, setAnimationKey] = useState(0);
 
   useEffect(() => {
-    // Restart animation when the data changes meaningfully
+    // Restart animation when the data changes or when parent signals a redraw
     setAnimationKey(k => k + 1);
     if (linePathRef.current) {
       setPathLength(linePathRef.current.getTotalLength());
     }
-  }, [linePath]);
+  }, [linePath, chartKey]);
 
   // ── Hover state ────────────────────────────────────────────────────
   const [hoveredMarker, setHoveredMarker] = useState<Marker | null>(null);
@@ -490,6 +493,7 @@ export function SeasonChart({ series, events, cashGaps, horizonDays, onMarkerCli
               {hoveredMarker.kind === 'income' ? 'Harvest payment' :
                 hoveredMarker.kind === 'inputs' ? 'Crop inputs' :
                 hoveredMarker.kind === 'labour' ? 'Labour cost' :
+                hoveredMarker.events[0]?.category === 'REPAYMENT' ? 'Credit repayment due' :
                 'One-off expense'}
             </div>
             {hoveredMarker.events[0]?.reasons && hoveredMarker.events[0].reasons.length > 0 && (

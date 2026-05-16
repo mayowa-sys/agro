@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/stores/auth.store';
 import { useTheme } from '@/hooks/useTheme';
+import { DemoControls } from '@/components/dev/DemoControls';
 import { Sun, Moon, LayoutDashboard, TrendingUp, SplitSquareHorizontal, Clock, PlayCircle, Hammer } from 'lucide-react';
 
 const farmerLinks = [
@@ -39,6 +40,7 @@ export function AppShell() {
         </span>
         <div className="flex items-center gap-5">
           <span className="text-sm text-muted-foreground font-sans">{user?.phone}</span>
+          <DemoControls />
           <button
             onClick={toggle}
             className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

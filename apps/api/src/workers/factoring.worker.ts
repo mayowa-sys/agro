@@ -23,19 +23,26 @@ new Worker('factoring', async (job) => {
     const workingAccount = advance.farmer.virtualAccounts.find(va => va.purpose === 'WORKING');
     if (!workingAccount) throw new Error(`No WORKING account for farmer ${advance.farmerId}`);
 
-    // Transfer advance amount to farmer's Working account
-    const transferResult = await squadClient.initiateTransfer({
-      amount: Number(advance.amount) / 100,
-      account_number: workingAccount.squadAccountNumber,
-      bank_code: '058',
-      currency_id: 'NGN',
-      remark: `Agro factoring advance: ${advanceId}`,
+    // Factoring advance: AGRO float → farmer's WORKING VA.
+    // This is an INTERNAL allocation between AGRO-owned accounts, not a
+    // real outbound bank transfer. We update balances directly. In mock
+    // mode we also keep a fake transferResult for downstream code.
+    //
+    // TODO(squad-live): if AGRO is ever profiled by Squad for inter-VA
+    //   movements, replace this with a real /payout/transfer call.
+    await prisma.virtualAccount.update({
+      where: { id: workingAccount.id },
+      data: { cachedBalance: { increment: advance.amount } },
     });
+    const transferResult = { transaction_reference: `internal_factoring_${advanceId}`, status: 'SUCCESS' as const };
 
-    // Counterfactual loss = what farmer would have lost to exploitative middlemen
-    // Assumed predatory buyer would pay 45% less than fair market value
-    const totalDeliveryValue = advance.amount + advance.fee;
-    const counterfactualLossKobo = (totalDeliveryValue * 45n) / 100n;
+    // NOTE: factoring liberation is intentionally NOT logged here.
+    // The methodology page documents two Liberation sources (middleman discount
+    // and cash-on-day premium). A separate factoring counterfactual would need
+    // its own LiberationSource enum value, its own methodology section, and a
+    // defensible coefficient — none of which are in scope for the demo. The
+    // factoring product itself still functions; only the misleading 45% under
+    // MIDDLEMAN_DISCOUNT_AVOIDED row is removed.
 
     await prisma.factoringAdvance.update({
       where: { id: advanceId },
@@ -43,14 +50,6 @@ new Worker('factoring', async (job) => {
         status: 'ADVANCED',
         advancedAt: new Date(),
         squadAdvanceTransferRef: transferResult.transaction_reference,
-      },
-    });
-
-    await prisma.liberationLog.create({
-      data: {
-        farmerId: advance.farmerId,
-        factoringAdvanceId: advanceId,
-        counterfactualLossKobo,
       },
     });
 
@@ -67,12 +66,11 @@ new Worker('factoring', async (job) => {
         metadata: {
           advanceId,
           transferRef: transferResult.transaction_reference,
-          counterfactualLossKobo: counterfactualLossKobo.toString(),
         },
       },
     });
 
-    console.log(`Factoring advance ${advanceId} sent to farmer ${advance.farmerId}, liberation logged: ₦${Number(counterfactualLossKobo) / 100}`);
+    console.log(`Factoring advance ${advanceId} sent to farmer ${advance.farmerId}`);
   }
 
 }, { connection: bullRedis });

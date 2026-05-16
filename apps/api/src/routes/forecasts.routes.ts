@@ -69,7 +69,17 @@ forecastsRouter.get('/me/projected-balance', requireAuth, requireRole('FARMER'),
       eventDate.setUTCHours(0, 0, 0, 0);
       const dayOffset = Math.floor((eventDate.getTime() - today.getTime()) / 86400000);
       if (dayOffset < 0 || dayOffset > horizonDays) continue;
-      const delta = e.type === 'INCOME' ? e.expectedAmount : -e.expectedAmount;
+
+      // Coverage-aware: if an EXPENSE event is (partly) covered by a credit,
+      // only the UNCOVERED portion hits Working — the supplier was paid by
+      // AGRO float, not the farmer.
+      let effectiveAmount = e.expectedAmount;
+      if (e.type === 'EXPENSE' && e.coveredKobo && e.coveredKobo > 0n) {
+        effectiveAmount = e.expectedAmount - e.coveredKobo;
+        if (effectiveAmount < 0n) effectiveAmount = 0n;
+      }
+
+      const delta = e.type === 'INCOME' ? effectiveAmount : -effectiveAmount;
       byDay.set(dayOffset, (byDay.get(dayOffset) ?? 0n) + delta);
     }
 
